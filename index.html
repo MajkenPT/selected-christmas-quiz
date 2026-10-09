@@ -127,6 +127,22 @@ img,svg{display:block}
 .foot{margin-top:var(--space-6)}
 .demo{display:inline-block;margin-top:var(--space-2)}
 
+
+/* admin (diskret) */
+.adm-link{font:inherit;font-size:13px;line-height:16px;letter-spacing:.16em;color:var(--ink-muted);background:none;border:0;padding:var(--space-2);cursor:pointer;opacity:.35}
+.adm-link:hover,.adm-link:focus-visible{opacity:1}
+.adm{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--paper);color:#000;border-top:var(--stroke-hairline) solid var(--line);
+  padding:var(--space-3) var(--gutter) calc(var(--space-3) + env(safe-area-inset-bottom));max-height:70vh;overflow:auto;text-align:left}
+.adm[hidden]{display:none}
+.adm-in{max-width:640px;margin:0 auto;display:grid;gap:var(--space-3)}
+.adm-row{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.adm .label{color:#5B554B}
+.adm .btn{width:auto;min-height:40px;padding:0 var(--space-3);font-size:12px}
+.adm .btn.ghost{color:#000;border-color:var(--forest)}
+.adm .input{background:#fff}
+.adm .input input{min-height:44px;font-size:16px}
+.adm-st{font-size:14px;line-height:20px;color:#5B554B}
+
 @media (min-width:760px){
   :root{--gutter:32px}
   .corner.big{left:var(--space-7);bottom:var(--space-7);width:150px;height:150px}
@@ -429,7 +445,73 @@ function render(){
   }
 }
 
-$("#foot").innerHTML = "Selected · Julequiz 2026" + (BACKEND==="local" ? '<br><span class="demo">Demo: svar gemmes kun i denne browser</span>' : "");
+
+/* ============ Admin (diskret, kode 1234) ============
+   Kun en bekvemmelighed til at browse sitet: koden ligger i klienten og er ikke sikkerhed. */
+const ADMIN_CODE = "1234";
+const ssGet = k => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
+const ssSet = (k,v) => { try { v==null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k,v); } catch(e){} };
+function setTime(ts){
+  clockOffset = ts==null ? 0 : ts - Date.now();
+  ssSet("julequiz.adm.t", ts==null ? null : String(ts));
+  shownKey = null; render(); admStatus();
+}
+const savedT = Number(ssGet("julequiz.adm.t"));
+if (savedT && ssGet("julequiz.adm")==="1") clockOffset = savedT - Date.now();
+function admStatus(){
+  const el = $("#adm-st"); if(!el) return;
+  el.textContent = clockOffset ? "Viser: " + fmtWhen(now()) : "Viser: live tid";
+}
+function buildAdmin(){
+  const box = document.createElement("section");
+  box.className = "adm"; box.id = "adm"; box.hidden = true; box.setAttribute("aria-label","Admin");
+  const H = 3600000, scen = [["Før start", QUIZ[0].opens - 2*24*H]];
+  QUIZ.forEach((q,i) => {
+    scen.push(["Spm " + q.no + " åben", q.opens + 2*H]);
+    scen.push([i<QUIZ.length-1 ? "Pause " + q.no + "–" + (q.no+1) : "Færdig", q.closes + (i<QUIZ.length-1 ? 24*H : 24*H)]);
+  });
+  box.innerHTML = `<div class="adm-in">
+    <p class="label">Admin · browse hele sitet</p>
+    <div id="adm-lock" class="form" style="margin:0;max-width:none">
+      <div class="input"><input id="adm-code" type="password" inputmode="numeric" autocomplete="off" placeholder="Kode" maxlength="12" aria-label="Admin-kode"></div>
+      <p class="err" id="adm-err" role="alert"></p>
+      <div class="adm-row"><button class="btn" type="button" id="adm-ok">Åbn</button><button class="btn ghost" type="button" data-adm-close>Luk</button></div>
+    </div>
+    <div id="adm-main" hidden class="adm-in">
+      <p class="adm-st" id="adm-st"></p>
+      <div class="adm-row" id="adm-scen">${scen.map((c,i)=>`<button class="btn ghost" type="button" data-i="${i}">${esc(c[0])}</button>`).join("")}</div>
+      <div class="field"><label class="label" for="adm-dt">Vælg tidspunkt (dansk tid)</label>
+        <div class="input"><input id="adm-dt" type="datetime-local"></div></div>
+      <div class="adm-row">
+        <button class="btn" type="button" id="adm-go">Gå til tid</button>
+        <button class="btn ghost" type="button" id="adm-live">Live tid</button>
+        <button class="btn ghost" type="button" id="adm-clear">Ryd gemte svar</button>
+        <button class="btn ghost" type="button" id="adm-out">Log ud</button>
+        <button class="btn ghost" type="button" data-adm-close>Luk</button>
+      </div>
+    </div></div>`;
+  document.body.appendChild(box);
+  const show = on => { $("#adm-lock").hidden = on; $("#adm-main").hidden = !on; if(on) admStatus(); };
+  const open = () => { box.hidden = false; show(ssGet("julequiz.adm")==="1"); if(ssGet("julequiz.adm")!=="1") $("#adm-code").focus(); };
+  box.querySelectorAll("[data-adm-close]").forEach(b => b.addEventListener("click", () => box.hidden = true));
+  const tryCode = () => {
+    if ($("#adm-code").value.trim() === ADMIN_CODE){ ssSet("julequiz.adm","1"); $("#adm-code").value=""; $("#adm-err").textContent=""; show(true); }
+    else $("#adm-err").textContent = "Forkert kode.";
+  };
+  $("#adm-ok").addEventListener("click", tryCode);
+  $("#adm-code").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); tryCode(); } });
+  $("#adm-scen").addEventListener("click", e => { const b=e.target.closest("button[data-i]"); if(b) setTime(scen[+b.dataset.i][1]); });
+  $("#adm-go").addEventListener("click", () => { const v=$("#adm-dt").value; if(!v) return; const t=new Date(v+":00+01:00").getTime(); if(!isNaN(t)) setTime(t); });
+  $("#adm-live").addEventListener("click", () => setTime(null));
+  $("#adm-clear").addEventListener("click", () => { try{ localStorage.removeItem("julequiz.svar"); localStorage.removeItem("julequiz.me"); }catch(e){} shownKey=null; render(); });
+  $("#adm-out").addEventListener("click", () => { ssSet("julequiz.adm",null); setTime(null); show(false); box.hidden = true; });
+  document.addEventListener("keydown", e => { if(e.key==="Escape") box.hidden = true; });
+  return open;
+}
+const openAdmin = buildAdmin();
+
+$("#foot").innerHTML = "Selected · Julequiz 2026" + (BACKEND==="local" ? '<br><span class="demo">Demo: svar gemmes kun i denne browser</span>' : "") + '<br><button class="adm-link" type="button" id="adm-open" aria-label="Admin">&middot;&middot;&middot;</button>';
+$("#adm-open").addEventListener("click", openAdmin);
 drawGarland();
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(drawGarland, 120); });
 render();
