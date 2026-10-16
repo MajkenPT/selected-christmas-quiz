@@ -296,7 +296,7 @@ function phase(t){
   return { k:"done", prev:QUIZ[QUIZ.length-1] };
 }
 const rulesLine = q => `One guess per person. Open until ${fmtWhen(q.closes)}. ${drawLine(q, now())}`;
-const drawLine = (q,t) => t < q.draw ? `We draw ${q.winners} winners at ${fmtTime(q.draw)}. Winners are notified by email.` : "The winners have been drawn and notified by email.";
+const drawLine = (q,t,dated) => t < q.draw ? `We draw ${q.winners} winners ${dated ? "on " + fmtDay(q.draw) + " " : ""}at ${fmtTime(q.draw)}. Winners are notified by email.` : "The winners have been drawn and notified by email.";
 
 /* ============ Drawing ============ */
 const STAR = (cx,cy,R=10,r=4) => { let d=""; for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rad=i%2?r:R; d+=(i?"L":"M")+(cx+rad*Math.cos(a)).toFixed(2)+" "+(cy+rad*Math.sin(a)).toFixed(2)+" "; } return d+"Z"; };
@@ -387,7 +387,7 @@ function confirmHtml(q, doc){
     <h1 class="headline">Thank you${first?", "+esc(first):""}.</h1>
     ${flake("fern")}
     <p class="body">You guessed ${esc(fmtGuess(doc.guess,q))}.</p>
-    <p class="caption">Your guess is saved. ${esc(drawLine(q, now()))}</p></div>`;
+    <p class="caption">Your guess is saved. ${esc(drawLine(q, now(), true))}</p></div>`;
 }
 const answerUrl = () => {
   const u = new URL(location.href); u.hash = ""; u.search = "";
