@@ -295,7 +295,8 @@ function phase(t){
   }
   return { k:"done", prev:QUIZ[QUIZ.length-1] };
 }
-const drawLine = (q,t) => t < q.draw ? `We draw ${q.winners} winners at ${fmtTime(q.draw)} the next day. Winners are notified by email.` : "The winners have been drawn and notified by email.";
+const rulesLine = q => `You can guess one time. Guesses can be submitted until the next day at ${fmtTime(q.closes)}. ${drawLine(q, now())}`;
+const drawLine = (q,t) => t < q.draw ? `We draw ${q.winners} winners at ${fmtTime(q.draw)}. Winners are announced by email.` : "The winners have been drawn and announced by email.";
 
 /* ============ Drawing ============ */
 const STAR = (cx,cy,R=10,r=4) => { let d=""; for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rad=i%2?r:R; d+=(i?"L":"M")+(cx+rad*Math.cos(a)).toFixed(2)+" "+(cy+rad*Math.sin(a)).toFixed(2)+" "; } return d+"Z"; };
@@ -386,7 +387,7 @@ function confirmHtml(q, doc){
     <h1 class="headline">Thank you${first?", "+esc(first):""}.</h1>
     ${flake("fern")}
     <p class="body">You guessed ${esc(fmtGuess(doc.guess,q))}.</p>
-    <p class="caption">Your answer is final and can't be changed. ${esc(drawLine(q, now()))}</p></div>`;
+    <p class="caption">Your guess is saved and can't be changed. ${esc(drawLine(q, now()))}</p></div>`;
 }
 const answerUrl = () => {
   const u = new URL(location.href); u.hash = ""; u.search = "";
@@ -411,7 +412,7 @@ function renderOpen(q,t){
   return `<div class="split">` + head + `<div class="qrbox">
     <div class="qr" role="img" aria-label="QR code that opens the answer page">${qrSvg(url)}</div>
     <p class="label">Scan to answer</p>
-    <p class="caption">${esc(drawLine(q, t))}</p>
+    <p class="caption">${esc(rulesLine(q))}</p>
     ${isAdmin()?`<p class="caption">${esc(url)}</p>`:""}
   </div></div>` + closing;
 }
@@ -446,7 +447,7 @@ function showForm(q){
   const me = (()=>{ try{ return JSON.parse(lsGet("julequiz.me")||"{}"); }catch(e){ return {}; } })();
   $("#qhead").hidden = false;
   $("#qbody").innerHTML = formHtml(q, me)
-    + `<p class="caption" style="margin-top:var(--space-4)">One guess per person, and your answer is final. Open until ${esc(fmtWhen(q.closes))}. ${esc(drawLine(q, now()))}</p>`;
+    + `<p class="caption" style="margin-top:var(--space-4)">${esc(rulesLine(q))}</p>`;
   bindForm(q);
 }
 function showConfirm(q, doc){
