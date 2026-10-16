@@ -95,7 +95,7 @@ img,svg{display:block}
 .plan li{display:grid;grid-template-columns:1fr auto;gap:var(--space-1) var(--space-3);align-items:center;
   padding:var(--space-3) 0;border-bottom:var(--stroke-hairline) solid var(--line)}
 .plan .d{white-space:nowrap;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted);line-height:18px}
-.plan .n{grid-column:1/-1;grid-row:2;font-size:18px;line-height:24px}
+.plan .n{grid-column:1/-1;grid-row:2;font-size:22px;line-height:28px}
 .plan .n small{display:inline;margin-left:var(--space-2)}
 .plan .n small{font-size:14px;line-height:20px;color:var(--ink-muted)}
 .plan .s{display:flex;align-items:center;gap:var(--space-2);font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-muted)}
@@ -190,15 +190,15 @@ img,svg{display:block}
    and question 3 closes at 14:00, an hour before the draw at 15:00. */
 const T = s => new Date(s).getTime();
 const QUIZ = [
-  { id:"q1", no:1, title:"How many peppernuts are in the jar?",
+  { id:"q1", no:1, name:"Oh Crumbs!", title:"How many peppernuts are in the jar?",
     hint:"Look at the jar at the station and write your guess.",
     prize:"Ceramics", winners:4, kind:"int", unit:"peppernuts", placeholder:"e.g. 1250", min:1, max:100000,
     opens:T("2026-12-02T08:00:00+01:00"), closes:T("2026-12-03T11:00:00+01:00"), draw:T("2026-12-03T12:00:00+01:00") },
-  { id:"q2", no:2, title:"Guess the weight of the package.",
+  { id:"q2", no:2, name:"Weigh Too Merry", title:"Guess the weight of the package.",
     hint:"The prizes are in the package. Write the weight in kilos.",
     prize:"Wash bag with Woods products", prizeShort:"Wash bag", winners:4, kind:"kg", unit:"kg", placeholder:"e.g. 2.4", min:0.01, max:500,
     opens:T("2026-12-09T08:00:00+01:00"), closes:T("2026-12-10T11:00:00+01:00"), draw:T("2026-12-10T12:00:00+01:00") },
-  { id:"q3", no:3, title:"How many elves are in the picture?",
+  { id:"q3", no:3, name:"Elf & Seek", title:"How many elves are in the picture?",
     hint:"Find the big board at the station and count the elves.",
     prize:"Bubbles with logo", prizeShort:"Bubbles", winners:4, kind:"int", unit:"elves", placeholder:"e.g. 42", min:1, max:100000,
     opens:T("2026-12-16T08:00:00+01:00"), closes:T("2026-12-17T14:00:00+01:00"), draw:T("2026-12-17T15:00:00+01:00") }
@@ -310,7 +310,7 @@ function renderPlan(t){
     const status = open ? "Open" : past ? "Closed" : "Opens";
     return `<li class="${open?"on":past?"past":""}">
       <span class="d">${esc(shortDate(q.opens))}</span>
-      <span class="n">Question ${q.no}${isAdmin()?`<small>${esc(q.prizeShort||q.prize)}</small>`:""}</span>
+      <span class="n">${esc(q.name)}${isAdmin()?`<small>${esc(q.prizeShort||q.prize)}</small>`:""}</span>
       <span class="s">${open?starIcon():'<i class="star-gap"></i>'}${status}</span></li>`;
   }).join("");
   $("#plan").innerHTML = `<p class="label">Three Wednesdays in December</p><ol>${rows}</ol>`;
@@ -324,7 +324,7 @@ function cdCells(ms){
 }
 function renderSleep(ph,t){
   const done = ph.k==="done";
-  const note = ph.prev ? `<p class="caption">Question ${ph.prev.no} is closed. ${esc(drawLine(ph.prev,t))}</p>` : "";
+  const note = ph.prev ? `<p class="caption">${esc(ph.prev.name)} is closed. ${esc(drawLine(ph.prev,t))}</p>` : "";
   if (done){
     return `<div class="head">
       <h1 class="headline">The elf is on Christmas holiday.</h1>
@@ -368,7 +368,7 @@ function confirmHtml(q, doc){
 }
 function renderOpen(q,t){
   return `<div class="head" id="qhead">
-    <p class="label">Question ${q.no} of ${QUIZ.length}</p>
+    <p class="label">${esc(q.name)} · Question ${q.no} of ${QUIZ.length}</p>
     <h1 class="headline">${esc(q.title)}</h1>
     ${flake("fern")}
     <p class="body">${esc(q.hint)}</p>
