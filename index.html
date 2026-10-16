@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="da" data-theme="cream">
+<html lang="en" data-theme="cream">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Selected julequiz</title>
-<meta name="description" content="Tre onsdage i december, tre gæt og tolv præmier. Quiz-nissen vågner kun om onsdagen.">
+<title>Selected Christmas Quiz</title>
+<meta name="description" content="Three Wednesdays in December, three guesses and twelve prizes. The Quiz Elf only wakes up on Wednesdays.">
 <meta name="theme-color" content="#F4EFE6">
 <style>
 /* Selected Christmas design tokens (tokens.json), cream + forest evening */
@@ -173,64 +173,65 @@ img,svg{display:block}
 <main class="stage">
   <img class="logo" id="logo" src="assets/selected-logo-hat-black.svg" alt="Selected" width="430" height="140">
   <div id="view"></div>
-  <section class="plan" id="plan" aria-label="Kalender"></section>
+  <section class="plan" id="plan" aria-label="Calendar"></section>
   <p class="caption foot" id="foot"></p>
 </main>
 
 <svg class="flake corner big" aria-hidden="true"><use href="#flake-fern"/></svg>
 <svg class="flake corner small" aria-hidden="true"><use href="#flake-stem"/></svg>
 
-<noscript><p class="caption" style="padding:24px;text-align:center">Julequizzen kræver JavaScript.</p></noscript>
+<noscript><p class="caption" style="padding:24px;text-align:center">The Christmas quiz requires JavaScript.</p></noscript>
 
 <script>
 "use strict";
-/* ============ Opsætning ============
-   Tider er dansk tid (CET, +01:00 i december).
-   Antagelser: spørgsmål 2 og 3 åbner kl. 08.00 (som spørgsmål 1),
-   og spørgsmål 3 lukker kl. 14.00, en time før lodtrækningen kl. 15.00. */
+/* ============ Setup ============
+   Times are Danish time (CET, +01:00 in December).
+   Assumptions: questions 2 and 3 open at 08:00 (like question 1),
+   and question 3 closes at 14:00, an hour before the draw at 15:00. */
 const T = s => new Date(s).getTime();
 const QUIZ = [
-  { id:"q1", no:1, title:"Hvor mange pebernødder er der i glasset?",
-    hint:"Se glasset ved stationen, og skriv dit gæt.",
-    prize:"Keramik", winners:4, kind:"int", unit:"pebernødder", placeholder:"fx 1250", min:1, max:100000,
+  { id:"q1", no:1, title:"How many peppernuts are in the jar?",
+    hint:"Look at the jar at the station and write your guess.",
+    prize:"Ceramics", winners:4, kind:"int", unit:"peppernuts", placeholder:"e.g. 1250", min:1, max:100000,
     opens:T("2026-12-02T08:00:00+01:00"), closes:T("2026-12-03T11:00:00+01:00"), draw:T("2026-12-03T12:00:00+01:00") },
-  { id:"q2", no:2, title:"Gæt vægten på pakken.",
-    hint:"Præmierne ligger i pakken. Skriv vægten i kilo.",
-    prize:"Toilettaske med Woods-produkter", prizeShort:"Toilettaske", winners:4, kind:"kg", unit:"kg", placeholder:"fx 2,4", min:0.01, max:500,
+  { id:"q2", no:2, title:"Guess the weight of the package.",
+    hint:"The prizes are in the package. Write the weight in kilos.",
+    prize:"Wash bag with Woods products", prizeShort:"Wash bag", winners:4, kind:"kg", unit:"kg", placeholder:"e.g. 2.4", min:0.01, max:500,
     opens:T("2026-12-09T08:00:00+01:00"), closes:T("2026-12-10T11:00:00+01:00"), draw:T("2026-12-10T12:00:00+01:00") },
-  { id:"q3", no:3, title:"Hvor mange nisser er der på billedet?",
-    hint:"Find det store board ved stationen, og tæl nisserne.",
-    prize:"Bobler med logo", prizeShort:"Bobler", winners:4, kind:"int", unit:"nisser", placeholder:"fx 42", min:1, max:100000,
+  { id:"q3", no:3, title:"How many elves are in the picture?",
+    hint:"Find the big board at the station and count the elves.",
+    prize:"Bubbles with logo", prizeShort:"Bubbles", winners:4, kind:"int", unit:"elves", placeholder:"e.g. 42", min:1, max:100000,
     opens:T("2026-12-16T08:00:00+01:00"), closes:T("2026-12-17T14:00:00+01:00"), draw:T("2026-12-17T15:00:00+01:00") }
 ];
 
-/* Hvor svarene gemmes. "local" gemmer kun i den enkelte browser (demo). */
+/* Where answers are stored. "local" only saves in the individual browser (demo). */
 const BACKEND = "local";
 
-/* ============ Hjælpere ============ */
+/* ============ Helpers ============ */
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pad = n => String(n).padStart(2,"0");
 const lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const lsSet = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
 
-/* Tidsrejse til test: ?nu=2026-12-09T10:00 (kun i demo) */
+/* Time travel for testing: ?nu=2026-12-09T10:00 (demo only, admin session required) */
 let clockOffset = 0;
 (function(){
   const v = new URLSearchParams(location.search).get("nu");
   if (!v || BACKEND !== "local") return;
+  try { if (sessionStorage.getItem("julequiz.adm") !== "1") return; } catch(e){ return; }
   const iso = /^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(v) ? v + ":00+01:00" : v;
   const t = new Date(iso).getTime();
   if (!isNaN(t)) clockOffset = t - Date.now();
 })();
 const now = () => Date.now() + clockOffset;
 
-const dtf = new Intl.DateTimeFormat("da-DK",{timeZone:"Europe/Copenhagen",weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+const dtf = new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Copenhagen",weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
 function parts(ts){ const o={}; dtf.formatToParts(new Date(ts)).forEach(p=>o[p.type]=p.value); return o; }
-const fmtDay  = ts => { const p=parts(ts); return `${p.weekday} d. ${p.day}. ${p.month}`; };
-const fmtTime = ts => { const p=parts(ts); return `${p.hour}.${p.minute}`; };
-const fmtWhen = ts => `${fmtDay(ts)} kl. ${fmtTime(ts)}`;
-const shortDate = ts => { const p=parts(ts); return `${p.weekday.slice(0,3)} ${p.day}. ${p.month.slice(0,3)}`; };
+const fmtDay  = ts => { const p=parts(ts); return `${p.weekday} ${p.day} ${p.month}`; };
+const fmtTime = ts => { const p=parts(ts); return `${p.hour}:${p.minute}`; };
+const fmtWhen = ts => `${fmtDay(ts)} at ${fmtTime(ts)}`;
+const shortDate = ts => { const p=parts(ts); return `${p.weekday.slice(0,3)} ${p.day} ${p.month.slice(0,3)}`; };
 
 function split(ms){
   const s = Math.max(0, Math.floor(ms/1000));
@@ -239,15 +240,15 @@ function split(ms){
 
 function parseGuess(raw, q){
   let s = String(raw).trim().replace(/\s/g,"");
-  if (q.kind === "int"){ s = s.replace(/\./g,""); if(!/^\d+$/.test(s)) return NaN; return parseInt(s,10); }
+  if (q.kind === "int"){ s = s.replace(/,/g,""); if(!/^\d+$/.test(s)) return NaN; return parseInt(s,10); }
   s = s.replace(",","."); if(!/^\d+(\.\d+)?$/.test(s)) return NaN; return parseFloat(s);
 }
 function fmtGuess(v, q){
-  return q.kind === "int" ? v.toLocaleString("da-DK") + " " + q.unit
-                          : String(v).replace(".",",") + " " + q.unit;
+  return q.kind === "int" ? v.toLocaleString("en-GB") + " " + q.unit
+                          : String(v) + " " + q.unit;
 }
 
-/* ============ Lager ============ */
+/* ============ Storage ============ */
 const store = (function(){
   if (BACKEND === "local") {
     const K = "julequiz.svar";
@@ -257,11 +258,11 @@ const store = (function(){
       async save(id, doc){ const a = all(); a[id] = doc; lsSet(K, JSON.stringify(a)); }
     };
   }
-  throw new Error("Ukendt BACKEND");
+  throw new Error("Unknown BACKEND");
 })();
 const answerId = (qid, email) => qid + "__" + email.toLowerCase().replace(/[^a-z0-9@._+-]/g,"_");
 
-/* ============ Fase ============ */
+/* ============ Phase ============ */
 function phase(t){
   for (let i=0;i<QUIZ.length;i++){
     const q = QUIZ[i];
@@ -270,9 +271,9 @@ function phase(t){
   }
   return { k:"done", prev:QUIZ[QUIZ.length-1] };
 }
-const drawLine = (q,t) => t < q.draw ? `Vinderne trækkes ${fmtDay(q.draw)} kl. ${fmtTime(q.draw)}.` : "Vinderne er trukket.";
+const drawLine = (q,t) => t < q.draw ? `Winners are drawn ${fmtDay(q.draw)} at ${fmtTime(q.draw)}.` : "The winners have been drawn.";
 
-/* ============ Tegning ============ */
+/* ============ Drawing ============ */
 const STAR = (cx,cy,R=10,r=4) => { let d=""; for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rad=i%2?r:R; d+=(i?"L":"M")+(cx+rad*Math.cos(a)).toFixed(2)+" "+(cy+rad*Math.sin(a)).toFixed(2)+" "; } return d+"Z"; };
 const starIcon = () => `<svg class="star" viewBox="0 0 20 20" aria-hidden="true"><path d="${STAR(10,10,9,3.8)}"/></svg>`;
 
@@ -302,76 +303,76 @@ function setTheme(theme){
 
 const flake = (id,cls="divider") => `<svg class="flake ${cls}" aria-hidden="true"><use href="#flake-${id}"/></svg>`;
 
-/* ---- kalender ---- */
+/* ---- calendar ---- */
 function renderPlan(t){
   const rows = QUIZ.map(q => {
     const open = t>=q.opens && t<q.closes, past = t>=q.closes;
-    const status = open ? "Åben" : past ? "Lukket" : "Åbner";
+    const status = open ? "Open" : past ? "Closed" : "Opens";
     return `<li class="${open?"on":past?"past":""}">
       <span class="d">${esc(shortDate(q.opens))}</span>
-      <span class="n">Spørgsmål ${q.no}<small>${esc(q.prizeShort||q.prize)}</small></span>
+      <span class="n">Question ${q.no}<small>${esc(q.prizeShort||q.prize)}</small></span>
       <span class="s">${open?starIcon():'<i class="star-gap"></i>'}${status}</span></li>`;
   }).join("");
-  $("#plan").innerHTML = `<p class="label">Tre onsdage i december</p><ol>${rows}</ol>`;
+  $("#plan").innerHTML = `<p class="label">Three Wednesdays in December</p><ol>${rows}</ol>`;
 }
 
-/* ---- søvn ---- */
+/* ---- asleep ---- */
 function cdCells(ms){
   const c = split(ms);
   const cell = (k,v,u) => `<div class="cell"><span class="num" data-cd="${k}">${pad(v)}</span><span class="unit label">${u}</span></div>`;
-  return cell("d",c.d,"dage")+cell("h",c.h,"timer")+cell("m",c.m,"min")+cell("s",c.s,"sek");
+  return cell("d",c.d,"days")+cell("h",c.h,"hours")+cell("m",c.m,"min")+cell("s",c.s,"sec");
 }
 function renderSleep(ph,t){
   const done = ph.k==="done";
-  const note = ph.prev ? `<p class="caption">Spørgsmål ${ph.prev.no} er lukket. ${esc(drawLine(ph.prev,t))}</p>` : "";
+  const note = ph.prev ? `<p class="caption">Question ${ph.prev.no} is closed. ${esc(drawLine(ph.prev,t))}</p>` : "";
   if (done){
     return `<div class="head">
-      <h1 class="headline">Nissen holder juleferie.</h1>
+      <h1 class="headline">The elf is on Christmas holiday.</h1>
       <div class="zzz" aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
-      <p class="body">Tak fordi du var med i år.</p>${note}${flake("fern")}</div>`;
+      <p class="body">Thanks for playing this year.</p>${note}${flake("fern")}</div>`;
   }
   return `<div class="head">
-    <h1 class="headline">Quiz-nissen sover.</h1>
+    <h1 class="headline">The Quiz Elf is asleep.</h1>
     <div class="zzz" aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
-    <p class="body">Kom tilbage, når vækkeuret ringer.</p>${note}
+    <p class="body">Come back when the alarm clock rings.</p>${note}
     <div class="alarm">
-      <p class="label">Vækkeuret ringer ${esc(fmtWhen(ph.next.opens))}</p>
-      <div class="clock" role="timer" aria-label="Tid til vækkeuret ringer"><i class="bell l"></i><i class="bell r"></i>
+      <p class="label">The alarm clock rings ${esc(fmtWhen(ph.next.opens))}</p>
+      <div class="clock" role="timer" aria-label="Time until the alarm clock rings"><i class="bell l"></i><i class="bell r"></i>
         <div class="cells" id="cells">${cdCells(ph.next.opens - t)}</div></div>
     </div></div>`;
 }
 
-/* ---- åben ---- */
+/* ---- open ---- */
 function formHtml(q, me, guess){
-  const val = guess!=null ? String(guess).replace(".",",") : "";
+  const val = guess!=null ? String(guess) : "";
   return `<form class="form" id="form" novalidate>
-    <div class="field"><label class="label" for="f-name">Navn</label>
+    <div class="field"><label class="label" for="f-name">Name</label>
       <div class="input"><input id="f-name" name="name" type="text" autocomplete="name" value="${esc(me.name||"")}" maxlength="80"></div></div>
-    <div class="field"><label class="label" for="f-email">Arbejdsmail</label>
+    <div class="field"><label class="label" for="f-email">Work email</label>
       <div class="input"><input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" value="${esc(me.email||"")}" maxlength="120"></div></div>
-    <div class="field"><label class="label" for="f-guess">Dit gæt</label>
+    <div class="field"><label class="label" for="f-guess">Your guess</label>
       <div class="input"><input id="f-guess" name="guess" type="text" inputmode="${q.kind==="int"?"numeric":"decimal"}" autocomplete="off" placeholder="${esc(q.placeholder)}" value="${esc(val)}" maxlength="12"><span class="sfx">${esc(q.unit)}</span></div></div>
     <p class="err" id="err" role="alert"></p>
-    <button class="btn" type="submit" id="send">Send mit gæt</button>
+    <button class="btn" type="submit" id="send">Send my guess</button>
   </form>`;
 }
 function confirmHtml(q, doc){
   const first = (doc.name||"").trim().split(/\s+/)[0];
   return `<div class="head">
-    <p class="label">Dit gæt er modtaget</p>
-    <h1 class="headline">Tak${first?", "+esc(first):""}.</h1>
+    <p class="label">Your guess has been received</p>
+    <h1 class="headline">Thank you${first?", "+esc(first):""}.</h1>
     ${flake("fern")}
-    <p class="body">Du har gættet på ${esc(fmtGuess(doc.guess,q))}.</p>
-    <p class="caption">Du kan rette dit gæt frem til ${esc(fmtWhen(q.closes))}. ${esc(drawLine(q, now()))}</p>
-    <div class="after"><button class="btn ghost" type="button" id="edit">Ret mit gæt</button></div></div>`;
+    <p class="body">You guessed ${esc(fmtGuess(doc.guess,q))}.</p>
+    <p class="caption">You can change your guess until ${esc(fmtWhen(q.closes))}. ${esc(drawLine(q, now()))}</p>
+    <div class="after"><button class="btn ghost" type="button" id="edit">Change my guess</button></div></div>`;
 }
 function renderOpen(q,t){
   return `<div class="head" id="qhead">
-    <p class="label">Spørgsmål ${q.no} af ${QUIZ.length}</p>
+    <p class="label">Question ${q.no} of ${QUIZ.length}</p>
     <h1 class="headline">${esc(q.title)}</h1>
     ${flake("fern")}
     <p class="body">${esc(q.hint)}</p>
-    <div class="prize"><p class="label">Præmie · ${q.winners} vindere</p><p class="name">${esc(q.prize)}</p></div>
+    <div class="prize"><p class="label">Prize · ${q.winners} winners</p><p class="name">${esc(q.prize)}</p></div>
   </div>
   <div id="qbody"></div>
   <p class="caption" id="closing" style="margin-top:var(--space-4)"></p>`;
@@ -385,11 +386,11 @@ function bindForm(q){
     const name = form.name.value.trim(), email = form.email.value.trim();
     const guess = parseGuess(form.guess.value, q);
     const fail = (m, el) => { err.textContent = m; if(el) el.focus(); };
-    if (name.length < 2) return fail("Skriv dit navn.", form.name);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Skriv en gyldig mail, så vi kan finde dig, hvis du vinder.", form.email);
-    if (isNaN(guess) || guess < q.min || guess > q.max) return fail(q.kind==="int" ? "Skriv dit gæt som et helt tal." : "Skriv vægten i kilo, fx 2,4.", form.guess);
-    if (now() >= q.closes) return fail("Beklager, spørgsmålet er lige lukket.");
-    err.textContent = ""; btn.disabled = true; btn.textContent = "Sender";
+    if (name.length < 2) return fail("Enter your name.", form.name);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Enter a valid email so we can find you if you win.", form.email);
+    if (isNaN(guess) || guess < q.min || guess > q.max) return fail(q.kind==="int" ? "Enter your guess as a whole number." : "Enter the weight in kilos, e.g. 2.4.", form.guess);
+    if (now() >= q.closes) return fail("Sorry, the question has just closed.");
+    err.textContent = ""; btn.disabled = true; btn.textContent = "Sending";
     try {
       const id = answerId(q.id, email), prev = await store.get(id);
       const doc = { q:q.id, name, email, guess, at:Date.now(), first: prev ? prev.first : Date.now() };
@@ -397,8 +398,8 @@ function bindForm(q){
       lsSet("julequiz.me", JSON.stringify({name,email}));
       showConfirm(q, doc);
     } catch(e){
-      btn.disabled = false; btn.textContent = "Send mit gæt";
-      fail("Det lykkedes ikke at sende dit gæt. Prøv igen om lidt.");
+      btn.disabled = false; btn.textContent = "Send my guess";
+      fail("Your guess could not be sent. Please try again shortly.");
     }
   });
 }
@@ -406,7 +407,7 @@ function showForm(q, doc){
   const me = (()=>{ try{ return JSON.parse(lsGet("julequiz.me")||"{}"); }catch(e){ return {}; } })();
   $("#qhead").hidden = false;
   $("#qbody").innerHTML = formHtml(q, doc || me, doc ? doc.guess : null)
-    + `<p class="caption" style="margin-top:var(--space-4)">Åbent til ${esc(fmtWhen(q.closes))}. ${esc(drawLine(q, now()))}</p>`;
+    + `<p class="caption" style="margin-top:var(--space-4)">Open until ${esc(fmtWhen(q.closes))}. ${esc(drawLine(q, now()))}</p>`;
   bindForm(q);
 }
 function showConfirm(q, doc){
@@ -422,7 +423,7 @@ async function loadOwn(q){
   try { const doc = await store.get(answerId(q.id, me.email)); if (doc && $("#qbody")) showConfirm(q, doc); } catch(e){}
 }
 
-/* ============ Hovedløkke ============ */
+/* ============ Main loop ============ */
 let shownKey = null;
 function render(){
   const t = now(), ph = phase(t);
@@ -435,10 +436,10 @@ function render(){
     renderPlan(t);
     if (awake) loadOwn(ph.q);
   }
-  /* tæl ned uden at røre formularen */
+  /* count down without touching the form */
   if (ph.k === "open"){
     const c = split(ph.q.closes - t), el = $("#closing");
-    if (el) el.textContent = c.d ? `Lukker om ${c.d} d ${c.h} t ${pad(c.m)} m.` : `Lukker om ${c.h} t ${pad(c.m)} m ${pad(c.s)} s.`;
+    if (el) el.textContent = c.d ? `Closes in ${c.d} d ${c.h} h ${pad(c.m)} m.` : `Closes in ${c.h} h ${pad(c.m)} m ${pad(c.s)} s.`;
   } else if (ph.next){
     const c = split(ph.next.opens - t);
     for (const k of ["d","h","m","s"]){ const el = document.querySelector(`[data-cd="${k}"]`); if (el) el.textContent = pad(c[k]); }
@@ -446,8 +447,8 @@ function render(){
 }
 
 
-/* ============ Admin (diskret, kode 1234) ============
-   Kun en bekvemmelighed til at browse sitet: koden ligger i klienten og er ikke sikkerhed. */
+/* ============ Admin (discreet, code 1234) ============
+   Only a convenience for browsing the site: the code lives in the client and is not security. */
 const ADMIN_CODE = "1234";
 const ssGet = k => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
 const ssSet = (k,v) => { try { v==null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k,v); } catch(e){} };
@@ -460,34 +461,34 @@ const savedT = Number(ssGet("julequiz.adm.t"));
 if (savedT && ssGet("julequiz.adm")==="1") clockOffset = savedT - Date.now();
 function admStatus(){
   const el = $("#adm-st"); if(!el) return;
-  el.textContent = clockOffset ? "Viser: " + fmtWhen(now()) : "Viser: live tid";
+  el.textContent = clockOffset ? "Showing: " + fmtWhen(now()) : "Showing: live time";
 }
 function buildAdmin(){
   const box = document.createElement("section");
   box.className = "adm"; box.id = "adm"; box.hidden = true; box.setAttribute("aria-label","Admin");
-  const H = 3600000, scen = [["Før start", QUIZ[0].opens - 2*24*H]];
+  const H = 3600000, scen = [["Before start", QUIZ[0].opens - 2*24*H]];
   QUIZ.forEach((q,i) => {
-    scen.push(["Spm " + q.no + " åben", q.opens + 2*H]);
-    scen.push([i<QUIZ.length-1 ? "Pause " + q.no + "–" + (q.no+1) : "Færdig", q.closes + (i<QUIZ.length-1 ? 24*H : 24*H)]);
+    scen.push(["Q" + q.no + " open", q.opens + 2*H]);
+    scen.push([i<QUIZ.length-1 ? "Break " + q.no + "–" + (q.no+1) : "Finished", q.closes + (i<QUIZ.length-1 ? 24*H : 24*H)]);
   });
   box.innerHTML = `<div class="adm-in">
-    <p class="label">Admin · browse hele sitet</p>
+    <p class="label">Admin · browse the whole site</p>
     <div id="adm-lock" class="form" style="margin:0;max-width:none">
-      <div class="input"><input id="adm-code" type="password" inputmode="numeric" autocomplete="off" placeholder="Kode" maxlength="12" aria-label="Admin-kode"></div>
+      <div class="input"><input id="adm-code" type="password" inputmode="numeric" autocomplete="off" placeholder="Code" maxlength="12" aria-label="Admin code"></div>
       <p class="err" id="adm-err" role="alert"></p>
-      <div class="adm-row"><button class="btn" type="button" id="adm-ok">Åbn</button><button class="btn ghost" type="button" data-adm-close>Luk</button></div>
+      <div class="adm-row"><button class="btn" type="button" id="adm-ok">Open</button><button class="btn ghost" type="button" data-adm-close>Close</button></div>
     </div>
     <div id="adm-main" hidden class="adm-in">
       <p class="adm-st" id="adm-st"></p>
       <div class="adm-row" id="adm-scen">${scen.map((c,i)=>`<button class="btn ghost" type="button" data-i="${i}">${esc(c[0])}</button>`).join("")}</div>
-      <div class="field"><label class="label" for="adm-dt">Vælg tidspunkt (dansk tid)</label>
+      <div class="field"><label class="label" for="adm-dt">Pick a time (Danish time)</label>
         <div class="input"><input id="adm-dt" type="datetime-local"></div></div>
       <div class="adm-row">
-        <button class="btn" type="button" id="adm-go">Gå til tid</button>
-        <button class="btn ghost" type="button" id="adm-live">Live tid</button>
-        <button class="btn ghost" type="button" id="adm-clear">Ryd gemte svar</button>
-        <button class="btn ghost" type="button" id="adm-out">Log ud</button>
-        <button class="btn ghost" type="button" data-adm-close>Luk</button>
+        <button class="btn" type="button" id="adm-go">Go to time</button>
+        <button class="btn ghost" type="button" id="adm-live">Live time</button>
+        <button class="btn ghost" type="button" id="adm-clear">Clear saved answers</button>
+        <button class="btn ghost" type="button" id="adm-out">Log out</button>
+        <button class="btn ghost" type="button" data-adm-close>Close</button>
       </div>
     </div></div>`;
   document.body.appendChild(box);
@@ -496,7 +497,7 @@ function buildAdmin(){
   box.querySelectorAll("[data-adm-close]").forEach(b => b.addEventListener("click", () => box.hidden = true));
   const tryCode = () => {
     if ($("#adm-code").value.trim() === ADMIN_CODE){ ssSet("julequiz.adm","1"); $("#adm-code").value=""; $("#adm-err").textContent=""; show(true); }
-    else $("#adm-err").textContent = "Forkert kode.";
+    else $("#adm-err").textContent = "Wrong code.";
   };
   $("#adm-ok").addEventListener("click", tryCode);
   $("#adm-code").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); tryCode(); } });
@@ -510,7 +511,7 @@ function buildAdmin(){
 }
 const openAdmin = buildAdmin();
 
-$("#foot").innerHTML = "Selected · Julequiz 2026" + (BACKEND==="local" ? '<br><span class="demo">Demo: svar gemmes kun i denne browser</span>' : "") + '<br><button class="adm-link" type="button" id="adm-open" aria-label="Admin">&middot;&middot;&middot;</button>';
+$("#foot").innerHTML = "Selected · Christmas Quiz 2026" + (BACKEND==="local" ? '<br><span class="demo">Demo: answers are saved only in this browser</span>' : "") + '<br><button class="adm-link" type="button" id="adm-open" aria-label="Admin">&middot;&middot;&middot;</button>';
 $("#adm-open").addEventListener("click", openAdmin);
 drawGarland();
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(drawGarland, 120); });
