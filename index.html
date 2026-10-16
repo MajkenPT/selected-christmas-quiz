@@ -310,7 +310,7 @@ function renderPlan(t){
     const status = open ? "Open" : past ? "Closed" : "Opens";
     return `<li class="${open?"on":past?"past":""}">
       <span class="d">${esc(shortDate(q.opens))}</span>
-      <span class="n">Question ${q.no}<small>${esc(q.prizeShort||q.prize)}</small></span>
+      <span class="n">Question ${q.no}${isAdmin()?`<small>${esc(q.prizeShort||q.prize)}</small>`:""}</span>
       <span class="s">${open?starIcon():'<i class="star-gap"></i>'}${status}</span></li>`;
   }).join("");
   $("#plan").innerHTML = `<p class="label">Three Wednesdays in December</p><ol>${rows}</ol>`;
@@ -372,7 +372,7 @@ function renderOpen(q,t){
     <h1 class="headline">${esc(q.title)}</h1>
     ${flake("fern")}
     <p class="body">${esc(q.hint)}</p>
-    <div class="prize"><p class="label">Prize · ${q.winners} winners</p><p class="name">${esc(q.prize)}</p></div>
+    <div class="prize"><p class="label">We draw ${q.winners} winners</p>${isAdmin()?`<p class="name">${esc(q.prize)} <small class="label">(admin only)</small></p>`:""}</div>
   </div>
   <div id="qbody"></div>
   <p class="caption" id="closing" style="margin-top:var(--space-4)"></p>`;
@@ -451,6 +451,7 @@ function render(){
    Only a convenience for browsing the site: the code lives in the client and is not security. */
 const ADMIN_CODE = "1234";
 const ssGet = k => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
+const isAdmin = () => ssGet("julequiz.adm")==="1";
 const ssSet = (k,v) => { try { v==null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k,v); } catch(e){} };
 function setTime(ts){
   clockOffset = ts==null ? 0 : ts - Date.now();
@@ -496,7 +497,7 @@ function buildAdmin(){
   const open = () => { box.hidden = false; show(ssGet("julequiz.adm")==="1"); if(ssGet("julequiz.adm")!=="1") $("#adm-code").focus(); };
   box.querySelectorAll("[data-adm-close]").forEach(b => b.addEventListener("click", () => box.hidden = true));
   const tryCode = () => {
-    if ($("#adm-code").value.trim() === ADMIN_CODE){ ssSet("julequiz.adm","1"); $("#adm-code").value=""; $("#adm-err").textContent=""; show(true); }
+    if ($("#adm-code").value.trim() === ADMIN_CODE){ ssSet("julequiz.adm","1"); shownKey=null; render(); $("#adm-code").value=""; $("#adm-err").textContent=""; show(true); }
     else $("#adm-err").textContent = "Wrong code.";
   };
   $("#adm-ok").addEventListener("click", tryCode);
