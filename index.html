@@ -128,7 +128,23 @@ img,svg{display:block}
 .demo{display:inline-block;margin-top:var(--space-2)}
 
 
-/* admin (diskret) */
+/* qr */
+
+/* screen: QR code */
+.qrbox{margin:var(--space-5) auto 0;display:grid;justify-items:center;gap:var(--space-3)}
+.qr{width:clamp(200px,min(56vw,30vh),380px);aspect-ratio:1;padding:16px;background:#fff;color:#000;border:var(--stroke-hairline) solid var(--line);border-radius:var(--radius-slab)}
+.qr svg{width:100%;height:100%}
+.answer .plan{display:none}
+.split .qrbox{margin-top:var(--space-4)}
+@media (min-width:900px){
+  body:not(.answer) .stage{max-width:1120px;padding-top:clamp(64px,11vh,110px);padding-bottom:140px}
+  body:not(.answer) .logo{width:min(30vw,320px)}
+  .split{display:grid;grid-template-columns:1fr auto;gap:var(--space-6);align-items:center}
+  .split{margin-top:var(--space-5)}
+  .split .qrbox,.split .head{margin-top:0}
+  .split .head{margin-top:0}
+  .qr{width:clamp(220px,min(30vw,42vh),380px)}
+}
 .adm-link{font:inherit;font-size:13px;line-height:16px;letter-spacing:.16em;color:var(--ink-muted);background:none;border:0;padding:var(--space-2);cursor:pointer;opacity:.35}
 .adm-link:hover,.adm-link:focus-visible{opacity:1}
 .adm{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--paper);color:#000;border-top:var(--stroke-hairline) solid var(--line);
@@ -182,30 +198,21 @@ img,svg{display:block}
 
 <noscript><p class="caption" style="padding:24px;text-align:center">The Christmas quiz requires JavaScript.</p></noscript>
 
+<script src="quiz-config.js"></script>
+<script src="vendor/qrcode.js"></script>
 <script>
 "use strict";
 /* ============ Setup ============
-   Times are Danish time (CET, +01:00 in December).
-   Assumptions: questions 2 and 3 open at 08:00 (like question 1),
-   and question 3 closes at 14:00, an hour before the draw at 15:00. */
+   Schedule and questions live in quiz-config.js (shared with the API). Times are Danish time. */
 const T = s => new Date(s).getTime();
-const QUIZ = [
-  { id:"q1", no:1, name:"Oh Crumbs!", title:"How many peppernuts are in the jar?",
-    hint:"Look at the jar at the station and write your guess.",
-    prize:"Ceramics", winners:4, kind:"int", unit:"peppernuts", placeholder:"e.g. 1250", min:1, max:100000,
-    opens:T("2026-12-02T08:00:00+01:00"), closes:T("2026-12-03T11:00:00+01:00"), draw:T("2026-12-03T12:00:00+01:00") },
-  { id:"q2", no:2, name:"Weigh Too Merry", title:"Guess the weight of the package.",
-    hint:"The prizes are in the package. Write the weight in kilos.",
-    prize:"Wash bag with Woods products", prizeShort:"Wash bag", winners:4, kind:"kg", unit:"kg", placeholder:"e.g. 2.4", min:0.01, max:500,
-    opens:T("2026-12-09T08:00:00+01:00"), closes:T("2026-12-10T11:00:00+01:00"), draw:T("2026-12-10T12:00:00+01:00") },
-  { id:"q3", no:3, name:"Elf & Seek", title:"How many elves are in the picture?",
-    hint:"Find the big board at the station and count the elves.",
-    prize:"Bubbles with logo", prizeShort:"Bubbles", winners:4, kind:"int", unit:"elves", placeholder:"e.g. 42", min:1, max:100000,
-    opens:T("2026-12-16T08:00:00+01:00"), closes:T("2026-12-17T14:00:00+01:00"), draw:T("2026-12-17T15:00:00+01:00") }
-];
+const QUIZ = QUIZ_CONFIG.map(c => ({ ...c, opens:T(c.opens), closes:T(c.closes), draw:T(c.draw) }));
 
-/* Where answers are stored. "local" only saves in the individual browser (demo). */
-const BACKEND = "local";
+/* "api": answers go to /api/answer. */
+const BACKEND = "api";
+
+/* Same page, two views: the screen (/) shows the question and a QR code, the phone (/answer) shows the form. */
+const ANSWER_MODE = /\/answer\/?$/.test(location.pathname) || new URLSearchParams(location.search).has("answer");
+if (ANSWER_MODE) document.body.classList.add("answer");
 
 /* ============ Helpers ============ */
 const $ = s => document.querySelector(s);
@@ -248,19 +255,25 @@ function fmtGuess(v, q){
                           : String(v) + " " + q.unit;
 }
 
-/* ============ Storage ============ */
-const store = (function(){
-  if (BACKEND === "local") {
-    const K = "julequiz.svar";
-    const all = () => { try { return JSON.parse(lsGet(K) || "{}"); } catch(e){ return {}; } };
-    return {
-      async get(id){ return all()[id] || null; },
-      async save(id, doc){ const a = all(); a[id] = doc; lsSet(K, JSON.stringify(a)); }
-    };
+/* ============ Storage ============
+   One answer per person: the server refuses a second answer from the same email, and the device
+   remembers what it sent. While an admin previews another time nothing is sent to the server. */
+const mineKey = () => clockOffset ? "julequiz.preview" : "julequiz.mine";
+const mineAll = () => { try { return JSON.parse(lsGet(mineKey()) || "{}"); } catch(e){ return {}; } };
+const store = {
+  async get(qid){ return mineAll()[qid] || null; },
+  async save(doc){
+    if (BACKEND === "api" && !clockOffset){
+      let res;
+      try { res = await fetch("/api/answer", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ q:doc.q, name:doc.name, email:doc.email, guess:doc.guess }) }); }
+      catch(e){ throw new Error("network"); }
+      if (res.status === 409) throw new Error("duplicate");
+      if (res.status === 403) throw new Error("closed");
+      if (!res.ok) throw new Error("failed");
+    }
+    const a = mineAll(); a[doc.q] = doc; lsSet(mineKey(), JSON.stringify(a));
   }
-  throw new Error("Unknown BACKEND");
-})();
-const answerId = (qid, email) => qid + "__" + email.toLowerCase().replace(/[^a-z0-9@._+-]/g,"_");
+};
 
 /* ============ Phase ============ */
 function phase(t){
@@ -271,7 +284,7 @@ function phase(t){
   }
   return { k:"done", prev:QUIZ[QUIZ.length-1] };
 }
-const drawLine = (q,t) => t < q.draw ? `Winners are drawn ${fmtDay(q.draw)} at ${fmtTime(q.draw)}.` : "The winners have been drawn.";
+const drawLine = (q,t) => t < q.draw ? `We draw ${q.winners} winners at ${fmtTime(q.draw)} the next day. Winners are notified by email.` : "The winners have been drawn and notified by email.";
 
 /* ============ Drawing ============ */
 const STAR = (cx,cy,R=10,r=4) => { let d=""; for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rad=i%2?r:R; d+=(i?"L":"M")+(cx+rad*Math.cos(a)).toFixed(2)+" "+(cy+rad*Math.sin(a)).toFixed(2)+" "; } return d+"Z"; };
@@ -343,15 +356,14 @@ function renderSleep(ph,t){
 }
 
 /* ---- open ---- */
-function formHtml(q, me, guess){
-  const val = guess!=null ? String(guess) : "";
+function formHtml(q, me){
   return `<form class="form" id="form" novalidate>
     <div class="field"><label class="label" for="f-name">Name</label>
       <div class="input"><input id="f-name" name="name" type="text" autocomplete="name" value="${esc(me.name||"")}" maxlength="80"></div></div>
     <div class="field"><label class="label" for="f-email">Work email</label>
       <div class="input"><input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" value="${esc(me.email||"")}" maxlength="120"></div></div>
     <div class="field"><label class="label" for="f-guess">Your guess</label>
-      <div class="input"><input id="f-guess" name="guess" type="text" inputmode="${q.kind==="int"?"numeric":"decimal"}" autocomplete="off" placeholder="${esc(q.placeholder)}" value="${esc(val)}" maxlength="12"><span class="sfx">${esc(q.unit)}</span></div></div>
+      <div class="input"><input id="f-guess" name="guess" type="text" inputmode="${q.kind==="int"?"numeric":"decimal"}" autocomplete="off" placeholder="${esc(q.placeholder)}" maxlength="12"><span class="sfx">${esc(q.unit)}</span></div></div>
     <p class="err" id="err" role="alert"></p>
     <button class="btn" type="submit" id="send">Send my guess</button>
   </form>`;
@@ -363,19 +375,34 @@ function confirmHtml(q, doc){
     <h1 class="headline">Thank you${first?", "+esc(first):""}.</h1>
     ${flake("fern")}
     <p class="body">You guessed ${esc(fmtGuess(doc.guess,q))}.</p>
-    <p class="caption">You can change your guess until ${esc(fmtWhen(q.closes))}. ${esc(drawLine(q, now()))}</p>
-    <div class="after"><button class="btn ghost" type="button" id="edit">Change my guess</button></div></div>`;
+    <p class="caption">Your answer is final and can't be changed. ${esc(drawLine(q, now()))}</p></div>`;
+}
+const answerUrl = () => {
+  const u = new URL(location.href); u.hash = ""; u.search = "";
+  if (/^https?:$/.test(u.protocol) && !/^(localhost|127\.|\[::1\])/.test(u.hostname)){ u.pathname = "/answer"; return u.href; }
+  u.search = "?answer"; return u.href;
+};
+function qrSvg(url){
+  const qr = qrcode(0, "M"); qr.addData(url); qr.make();
+  return qr.createSvgTag({ cellSize:4, margin:0, scalable:true });
 }
 function renderOpen(q,t){
-  return `<div class="head" id="qhead">
+  const head = `<div class="head" id="qhead">
     <p class="label">${esc(q.name)} · Question ${q.no} of ${QUIZ.length}</p>
     <h1 class="headline">${esc(q.title)}</h1>
     ${flake("fern")}
     <p class="body">${esc(q.hint)}</p>
     <div class="prize"><p class="label">We draw ${q.winners} winners</p>${isAdmin()?`<p class="name">${esc(q.prize)} <small class="label">(admin only)</small></p>`:""}</div>
-  </div>
-  <div id="qbody"></div>
-  <p class="caption" id="closing" style="margin-top:var(--space-4)"></p>`;
+  </div>`;
+  const closing = `<p class="caption" id="closing" style="margin-top:var(--space-4)"></p>`;
+  if (ANSWER_MODE) return head + `<div id="qbody"></div>` + closing;
+  const url = answerUrl();
+  return `<div class="split">` + head + `<div class="qrbox">
+    <div class="qr" role="img" aria-label="QR code that opens the answer page">${qrSvg(url)}</div>
+    <p class="label">Scan to answer</p>
+    <p class="caption">${esc(drawLine(q, t))}</p>
+    ${isAdmin()?`<p class="caption">${esc(url)}</p>`:""}
+  </div></div>` + closing;
 }
 
 function bindForm(q){
@@ -392,35 +419,33 @@ function bindForm(q){
     if (now() >= q.closes) return fail("Sorry, the question has just closed.");
     err.textContent = ""; btn.disabled = true; btn.textContent = "Sending";
     try {
-      const id = answerId(q.id, email), prev = await store.get(id);
-      const doc = { q:q.id, name, email, guess, at:Date.now(), first: prev ? prev.first : Date.now() };
-      await store.save(id, doc);
+      const doc = { q:q.id, name, email, guess, at:Date.now() };
+      await store.save(doc);
       lsSet("julequiz.me", JSON.stringify({name,email}));
       showConfirm(q, doc);
     } catch(e){
       btn.disabled = false; btn.textContent = "Send my guess";
-      fail("Your guess could not be sent. Please try again shortly.");
+      fail(e.message === "duplicate" ? "This email address has already been used to answer this question. Only one guess per person."
+         : e.message === "closed" ? "Sorry, the question has just closed."
+         : "Your guess could not be sent. Please try again shortly.");
     }
   });
 }
-function showForm(q, doc){
+function showForm(q){
   const me = (()=>{ try{ return JSON.parse(lsGet("julequiz.me")||"{}"); }catch(e){ return {}; } })();
   $("#qhead").hidden = false;
-  $("#qbody").innerHTML = formHtml(q, doc || me, doc ? doc.guess : null)
-    + `<p class="caption" style="margin-top:var(--space-4)">Open until ${esc(fmtWhen(q.closes))}. ${esc(drawLine(q, now()))}</p>`;
+  $("#qbody").innerHTML = formHtml(q, me)
+    + `<p class="caption" style="margin-top:var(--space-4)">One guess per person, and your answer is final. Open until ${esc(fmtWhen(q.closes))}. ${esc(drawLine(q, now()))}</p>`;
   bindForm(q);
 }
 function showConfirm(q, doc){
   $("#qhead").hidden = true;
   $("#qbody").innerHTML = confirmHtml(q, doc);
-  $("#edit").addEventListener("click", () => { showForm(q, doc); const g=$("#f-guess"); g && g.focus(); });
   window.scrollTo({top:0, behavior:"smooth"});
 }
 async function loadOwn(q){
   showForm(q);
-  const me = (()=>{ try{ return JSON.parse(lsGet("julequiz.me")||"{}"); }catch(e){ return {}; } })();
-  if (!me.email) return;
-  try { const doc = await store.get(answerId(q.id, me.email)); if (doc && $("#qbody")) showConfirm(q, doc); } catch(e){}
+  try { const doc = await store.get(q.id); if (doc && $("#qbody")) showConfirm(q, doc); } catch(e){}
 }
 
 /* ============ Main loop ============ */
@@ -433,8 +458,8 @@ function render(){
     const awake = ph.k === "open";
     setTheme(awake ? "cream" : "forest");
     $("#view").innerHTML = awake ? renderOpen(ph.q,t) : renderSleep(ph,t);
-    renderPlan(t);
-    if (awake) loadOwn(ph.q);
+    if (!ANSWER_MODE) renderPlan(t);
+    if (awake && ANSWER_MODE) loadOwn(ph.q);
   }
   /* count down without touching the form */
   if (ph.k === "open"){
@@ -505,14 +530,14 @@ function buildAdmin(){
   $("#adm-scen").addEventListener("click", e => { const b=e.target.closest("button[data-i]"); if(b) setTime(scen[+b.dataset.i][1]); });
   $("#adm-go").addEventListener("click", () => { const v=$("#adm-dt").value; if(!v) return; const t=new Date(v+":00+01:00").getTime(); if(!isNaN(t)) setTime(t); });
   $("#adm-live").addEventListener("click", () => setTime(null));
-  $("#adm-clear").addEventListener("click", () => { try{ localStorage.removeItem("julequiz.svar"); localStorage.removeItem("julequiz.me"); }catch(e){} shownKey=null; render(); });
+  $("#adm-clear").addEventListener("click", () => { try{ localStorage.removeItem("julequiz.mine"); localStorage.removeItem("julequiz.preview"); localStorage.removeItem("julequiz.me"); }catch(e){} shownKey=null; render(); });
   $("#adm-out").addEventListener("click", () => { ssSet("julequiz.adm",null); setTime(null); show(false); box.hidden = true; });
   document.addEventListener("keydown", e => { if(e.key==="Escape") box.hidden = true; });
   return open;
 }
 const openAdmin = buildAdmin();
 
-$("#foot").innerHTML = "Selected · Christmas Quiz 2026" + (BACKEND==="local" ? '<br><span class="demo">Demo: answers are saved only in this browser</span>' : "") + '<br><button class="adm-link" type="button" id="adm-open" aria-label="Admin">&middot;&middot;&middot;</button>';
+$("#foot").innerHTML = "Selected · Christmas Quiz 2026" + "" + '<br><button class="adm-link" type="button" id="adm-open" aria-label="Admin">&middot;&middot;&middot;</button>';
 $("#adm-open").addEventListener("click", openAdmin);
 drawGarland();
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(drawGarland, 120); });
