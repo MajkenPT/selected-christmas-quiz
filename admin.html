@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Selected Quiz · Answers</title>
+<style>
+@font-face{font-family:"Suisse Intl Mono";src:url("fonts/SuisseIntlMono-Regular.otf") format("opentype");font-display:swap}
+:root{--surface:#F4EFE6;--paper:#FBF8F1;--ink:#000;--muted:#5B554B;--line:#1F3A2E;--wine:#8B1E2D;--forest:#1F3A2E}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface);color:var(--ink);font:16px/24px "Suisse Intl Mono",ui-monospace,Menlo,Consolas,monospace;padding:24px 16px 64px}
+main{max-width:860px;margin:0 auto;display:grid;gap:20px}
+h1{font-size:24px;line-height:32px;margin:0;font-weight:400}
+.label{font-size:13px;line-height:16px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.field{display:grid;gap:6px;min-width:0}
+input,select{font:inherit;color:#000;background:var(--paper);border:1.5px solid var(--line);border-radius:2px;padding:10px 12px;min-height:46px;min-width:0}
+button{font:inherit;font-size:13px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;min-height:46px;padding:0 18px;border-radius:2px;color:var(--paper);background:var(--forest);border:1.5px solid var(--forest)}
+button.ghost{color:#000;background:transparent;border-color:var(--line)}
+button[disabled]{opacity:.5;cursor:default}
+.msg{min-height:24px}
+.msg.err{color:var(--wine)}
+.scroll{overflow-x:auto;border:1.5px solid var(--line);border-radius:2px;background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:14px;line-height:20px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #d8d1bf;white-space:nowrap}
+th{font-weight:400;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+tr.win td{background:#e4ecdf}
+.hint{font-size:14px;line-height:20px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <div><p class="label">Selected · Christmas Quiz</p><h1>Answers</h1></div>
+  <div class="row">
+    <div class="field" style="flex:1 1 240px"><label class="label" for="tok">Admin token</label><input id="tok" type="password" autocomplete="off" placeholder="ADMIN_TOKEN from Vercel"></div>
+    <div class="field"><label class="label" for="q">Question</label><select id="q"></select></div>
+    <button id="load" type="button">Load answers</button>
+  </div>
+  <p class="msg" id="msg" role="status"></p>
+  <div id="out" hidden>
+    <div class="row" style="margin-bottom:16px">
+      <button class="ghost" id="csv" type="button">Download CSV</button>
+      <button class="ghost" id="copy" type="button">Copy emails</button>
+    </div>
+    <div class="row" style="margin-bottom:8px">
+      <div class="field"><label class="label" for="ans">Correct answer (optional)</label><input id="ans" inputmode="decimal" placeholder="e.g. 2546"></div>
+      <button id="closest" type="button">Closest guesses win</button>
+      <button id="random" type="button">Draw at random</button>
+      <button class="ghost" id="reset" type="button">Clear marks</button>
+    </div>
+    <p class="hint" id="note"></p>
+    <div class="scroll"><table><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Guess</th><th>Answered</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </div>
+</main>
+<script src="quiz-config.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = ts => new Date(ts).toLocaleString("en-GB", {timeZone:"Europe/Copenhagen", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23"});
+let rows = [], winners = new Set(), cur = null;
+
+QUIZ_CONFIG.forEach(q => $("#q").insertAdjacentHTML("beforeend", `<option value="${q.id}">${esc(q.name)}</option>`));
+try { const t = sessionStorage.getItem("julequiz.admtoken"); if (t) $("#tok").value = t; } catch(e){}
+
+const say = (m, err) => { const e = $("#msg"); e.textContent = m; e.className = "msg" + (err ? " err" : ""); };
+
+function draw(){
+  $("#rows").innerHTML = rows.map((r,i) => `<tr class="${winners.has(r.email)?"win":""}"><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.guess)}</td><td>${esc(fmt(r.at))}</td></tr>`).join("");
+}
+
+async function load(){
+  const token = $("#tok").value.trim(); if (!token) return say("Paste your admin token first.", true);
+  cur = QUIZ_CONFIG.find(q => q.id === $("#q").value);
+  $("#load").disabled = true; say("Loading…");
+  try {
+    const res = await fetch("/api/answers?q=" + encodeURIComponent(cur.id), { headers:{ Authorization:"Bearer " + token } });
+    if (res.status === 401) throw new Error("Wrong admin token (or ADMIN_TOKEN is not set in Vercel).");
+    if (res.status === 503) throw new Error("The database is not connected. Check the Upstash variables in Vercel and redeploy.");
+    if (!res.ok) throw new Error("Something went wrong (" + res.status + ").");
+    rows = await res.json(); winners = new Set();
+    try { sessionStorage.setItem("julequiz.admtoken", token); } catch(e){}
+    say(`Connected. ${rows.length} answer${rows.length===1?"":"s"} for “${cur.name}”.`);
+    $("#out").hidden = false; $("#note").textContent = ""; draw();
+  } catch(e){ say(e.message, true); $("#out").hidden = true; }
+  $("#load").disabled = false;
+}
+
+function csvCell(v){ return '"' + String(v).replace(/"/g,'""') + '"'; }
+function download(){
+  const lines = ["name,email,guess,answered_at"].concat(rows.map(r => [r.name,r.email,r.guess,new Date(r.at).toISOString()].map(csvCell).join(",")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"}));
+  a.download = `answers-${cur.id}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+function mark(list, note){ winners = new Set(list.map(r => r.email)); $("#note").textContent = note; draw(); }
+
+$("#load").addEventListener("click", load);
+$("#tok").addEventListener("keydown", e => { if (e.key === "Enter") load(); });
+$("#csv").addEventListener("click", download);
+$("#copy").addEventListener("click", async () => {
+  const list = (winners.size ? rows.filter(r => winners.has(r.email)) : rows).map(r => r.email).join("; ");
+  try { await navigator.clipboard.writeText(list); say(winners.size ? "Winner emails copied." : "All emails copied."); } catch(e){ say("Could not copy. Use Download CSV instead.", true); }
+});
+$("#reset").addEventListener("click", () => mark([], ""));
+$("#random").addEventListener("click", () => {
+  const n = cur.winners, pool = rows.slice(), pick = [];
+  const buf = new Uint32Array(1);
+  while (pick.length < n && pool.length){ crypto.getRandomValues(buf); pick.push(pool.splice(buf[0] % pool.length, 1)[0]); }
+  mark(pick, `Drew ${pick.length} winner${pick.length===1?"":"s"} at random. Draw again to get a new result.`);
+});
+$("#closest").addEventListener("click", () => {
+  const t = parseFloat($("#ans").value.replace(",", "."));
+  if (isNaN(t)) return say("Type the correct answer first.", true);
+  say("");
+  const ranked = rows.slice().sort((a,b) => Math.abs(a.guess-t) - Math.abs(b.guess-t) || a.at - b.at);
+  const n = cur.winners, pick = ranked.slice(0, n);
+  const edge = ranked[n-1] && ranked[n] && Math.abs(ranked[n-1].guess-t) === Math.abs(ranked[n].guess-t);
+  mark(pick, `Marked the ${pick.length} closest guesses.` + (edge ? " Note: there is a tie at the cut-off; the earliest answer was ranked first." : ""));
+});
+</script>
+</body>
+</html>

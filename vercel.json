@@ -1,3 +1,12 @@
 {
-  "rewrites": [{ "source": "/answer", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/answer",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    }
+  ]
 }
