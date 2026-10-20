@@ -11,10 +11,6 @@ Christmas quiz for Selected. Three Wednesdays in December, one question each.
 
 Answers are stored by `api/answer.js` in a Redis/KV store reached over REST. In Vercel add the **Upstash Redis** (Storage / Marketplace) integration to the project; it sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
 
-To read the answers for the draw, set an `ADMIN_TOKEN` environment variable and call:
+To read the answers, set an `ADMIN_TOKEN` environment variable (a long random password) and open **`/admin`**. Paste the token, pick a question and load the answers. From there you can download a CSV, copy emails, and mark winners (at random, or the closest guesses to a correct answer).
 
-```
-curl -H "Authorization: Bearer $ADMIN_TOKEN" "https://<site>/api/answers?q=q1&format=csv"
-```
-
-The draw itself and the winner emails are done by hand from that list.
+The draw is made on that page; the winner emails are sent by hand.
