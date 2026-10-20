@@ -42,6 +42,7 @@ tr.win td{background:#e4ecdf}
     <div class="row" style="margin-bottom:16px">
       <button class="ghost" id="csv" type="button">Download CSV</button>
       <button class="ghost" id="copy" type="button">Copy emails</button>
+      <button class="ghost" id="del" type="button" style="margin-left:auto;color:#8B1E2D;border-color:#8B1E2D">Delete all answers</button>
     </div>
     <div class="row" style="margin-bottom:8px">
       <div class="field"><label class="label" for="ans">Correct answer (optional)</label><input id="ans" inputmode="decimal" placeholder="e.g. 2546"></div>
@@ -102,6 +103,12 @@ $("#csv").addEventListener("click", download);
 $("#copy").addEventListener("click", async () => {
   const list = (winners.size ? rows.filter(r => winners.has(r.email)) : rows).map(r => r.email).join("; ");
   try { await navigator.clipboard.writeText(list); say(winners.size ? "Winner emails copied." : "All emails copied."); } catch(e){ say("Could not copy. Use Download CSV instead.", true); }
+});
+$("#del").addEventListener("click", async () => {
+  if (!confirm(`Permanently delete all ${rows.length} answers for “${cur.name}”? This cannot be undone.`)) return;
+  const res = await fetch("/api/answers?q=" + encodeURIComponent(cur.id), { method:"DELETE", headers:{ Authorization:"Bearer " + $("#tok").value.trim() } });
+  if (!res.ok) return say("Could not delete (" + res.status + ").", true);
+  rows = []; winners = new Set(); draw(); $("#note").textContent = ""; say("All answers for “" + cur.name + "” were deleted.");
 });
 $("#reset").addEventListener("click", () => mark([], ""));
 $("#random").addEventListener("click", () => {

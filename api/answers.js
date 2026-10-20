@@ -1,5 +1,6 @@
-/* GET /api/answers?q=q1[&format=csv]   (header: Authorization: Bearer <ADMIN_TOKEN>)
-   Lists the answers for one question, so the draw can be made. ADMIN_TOKEN is an environment variable;
+/* GET    /api/answers?q=q1[&format=csv]   lists the answers for one question, so the draw can be made.
+   DELETE /api/answers?q=q1                 deletes all answers for one question (clean-up after tests / after the draw).
+   Both need the header  Authorization: Bearer <ADMIN_TOKEN>. ADMIN_TOKEN is an environment variable;
    it is not the 1234 code from the admin panel. */
 const crypto = require("crypto");
 const QUIZ = require("../quiz-config.js");
@@ -17,6 +18,12 @@ module.exports = async (req, res) => {
   const url = new URL(req.url, "http://x");
   const q = QUIZ.find(x => x.id === url.searchParams.get("q"));
   if (!q) { res.statusCode = 400; return res.end("Unknown question"); }
+
+  if (req.method === "DELETE") {
+    await redis.cmd("DEL", "answers:" + q.id);
+    res.setHeader("content-type", "application/json");
+    return res.end(JSON.stringify({ ok: true }));
+  }
 
   const flat = await redis.cmd("HGETALL", "answers:" + q.id);
   const rows = [];
