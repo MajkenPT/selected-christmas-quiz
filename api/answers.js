@@ -21,6 +21,7 @@ module.exports = async (req, res) => {
 
   if (req.method === "DELETE") {
     await redis.cmd("DEL", "answers:" + q.id);
+    await redis.cmd("INCR", "epoch:" + q.id); // lets phones that remember the old answer reset themselves
     res.setHeader("content-type", "application/json");
     return res.end(JSON.stringify({ ok: true }));
   }

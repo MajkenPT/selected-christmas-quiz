@@ -273,6 +273,7 @@ const mineKey = () => clockOffset ? "julequiz.preview" : "julequiz.mine";
 const mineAll = () => { try { return JSON.parse(lsGet(mineKey()) || "{}"); } catch(e){ return {}; } };
 const store = {
   async get(qid){ return mineAll()[qid] || null; },
+  async remove(qid){ const a = mineAll(); delete a[qid]; lsSet(mineKey(), JSON.stringify(a)); },
   async save(doc){
     if (BACKEND === "api" && !clockOffset){
       let res;
@@ -281,6 +282,7 @@ const store = {
       if (res.status === 409) throw new Error("duplicate");
       if (res.status === 403) throw new Error("closed");
       if (!res.ok) throw new Error("failed");
+      try { doc = { ...doc, epoch: (await res.json()).epoch }; } catch(e){}
     }
     const a = mineAll(); a[doc.q] = doc; lsSet(mineKey(), JSON.stringify(a));
   }
@@ -457,7 +459,17 @@ function showConfirm(q, doc){
 }
 async function loadOwn(q){
   showForm(q);
-  try { const doc = await store.get(q.id); if (doc && $("#qbody")) showConfirm(q, doc); } catch(e){}
+  try {
+    let doc = await store.get(q.id);
+    /* If an admin has cleared the answers since this phone answered, forget the old answer so it can answer again. */
+    if (doc && BACKEND === "api" && !clockOffset){
+      try {
+        const r = await fetch("/api/answer?q=" + encodeURIComponent(q.id), { cache:"no-store" });
+        if (r.ok && String(doc.epoch) !== String((await r.json()).epoch)){ await store.remove(q.id); doc = null; }
+      } catch(e){}
+    }
+    if (doc && $("#qbody")) showConfirm(q, doc);
+  } catch(e){}
 }
 
 /* ============ Main loop ============ */
