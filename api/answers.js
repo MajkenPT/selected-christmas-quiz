@@ -1,5 +1,6 @@
 /* GET    /api/answers?q=q1[&format=csv]   lists the answers for one question, so the draw can be made.
    DELETE /api/answers?q=q1                 deletes all answers for one question (clean-up after tests / after the draw).
+   DELETE /api/answers?q=q1&email=a@b.dk&email=c@d.dk   deletes just those answers.
    Both need the header  Authorization: Bearer <ADMIN_TOKEN>. ADMIN_TOKEN is an environment variable;
    it is not the 1234 code from the admin panel. */
 const crypto = require("crypto");
@@ -20,10 +21,19 @@ module.exports = async (req, res) => {
   if (!q) { res.statusCode = 400; return res.end("Unknown question"); }
 
   if (req.method === "DELETE") {
-    await redis.cmd("DEL", "answers:" + q.id);
-    await redis.cmd("INCR", "epoch:" + q.id); // lets phones that remember the old answer reset themselves
+    const emails = url.searchParams.getAll("email").map(e => e.trim().toLowerCase()).filter(Boolean).slice(0, 500);
     res.setHeader("content-type", "application/json");
-    return res.end(JSON.stringify({ ok: true }));
+    if (url.searchParams.has("email") && !emails.length) { res.statusCode = 400; return res.end(JSON.stringify({ error: "invalid" })); }
+    if (!emails.length) {
+      await redis.cmd("DEL", "answers:" + q.id);
+      await redis.cmd("DEL", "ids:" + q.id);
+      return res.end(JSON.stringify({ ok: true, all: true }));
+    }
+    const records = await redis.cmd("HMGET", "answers:" + q.id, ...emails);
+    const ids = records.filter(Boolean).map(r => JSON.parse(r).id).filter(Boolean);
+    const deleted = await redis.cmd("HDEL", "answers:" + q.id, ...emails);
+    if (ids.length) await redis.cmd("SREM", "ids:" + q.id, ...ids);
+    return res.end(JSON.stringify({ ok: true, deleted }));
   }
 
   const flat = await redis.cmd("HGETALL", "answers:" + q.id);

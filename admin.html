@@ -23,6 +23,7 @@ button[disabled]{opacity:.5;cursor:default}
 .msg.err{color:var(--wine)}
 .scroll{overflow-x:auto;border:1.5px solid var(--line);border-radius:2px;background:var(--paper)}
 table{border-collapse:collapse;width:100%;font-size:14px;line-height:20px}
+input[type=checkbox]{min-height:0;width:18px;height:18px;padding:0;accent-color:#1F3A2E}
 th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #d8d1bf;white-space:nowrap}
 th{font-weight:400;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 tr.win td{background:#e4ecdf}
@@ -42,7 +43,8 @@ tr.win td{background:#e4ecdf}
     <div class="row" style="margin-bottom:16px">
       <button class="ghost" id="csv" type="button">Download CSV</button>
       <button class="ghost" id="copy" type="button">Copy emails</button>
-      <button class="ghost" id="del" type="button" style="margin-left:auto;color:#8B1E2D;border-color:#8B1E2D">Delete all answers</button>
+      <button class="ghost" id="delsel" type="button" style="margin-left:auto;color:#8B1E2D;border-color:#8B1E2D" disabled>Delete selected</button>
+      <button class="ghost" id="del" type="button" style="color:#8B1E2D;border-color:#8B1E2D">Delete all answers</button>
     </div>
     <div class="row" style="margin-bottom:8px">
       <div class="field"><label class="label" for="ans">Correct answer (optional)</label><input id="ans" inputmode="decimal" placeholder="e.g. 2546"></div>
@@ -51,7 +53,7 @@ tr.win td{background:#e4ecdf}
       <button class="ghost" id="reset" type="button">Clear marks</button>
     </div>
     <p class="hint" id="note"></p>
-    <div class="scroll"><table><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Guess</th><th>Answered</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="scroll"><table><thead><tr><th><input type="checkbox" id="all" aria-label="Select all"></th><th>#</th><th>Name</th><th>Email</th><th>Guess</th><th>Answered</th></tr></thead><tbody id="rows"></tbody></table></div>
   </div>
 </main>
 <script src="quiz-config.js"></script>
@@ -60,7 +62,7 @@ tr.win td{background:#e4ecdf}
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = ts => new Date(ts).toLocaleString("en-GB", {timeZone:"Europe/Copenhagen", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23"});
-let rows = [], winners = new Set(), cur = null;
+let rows = [], winners = new Set(), sel = new Set(), cur = null;
 
 QUIZ_CONFIG.forEach(q => $("#q").insertAdjacentHTML("beforeend", `<option value="${q.id}">${esc(q.name)}</option>`));
 try { const t = sessionStorage.getItem("julequiz.admtoken"); if (t) $("#tok").value = t; } catch(e){}
@@ -68,7 +70,7 @@ try { const t = sessionStorage.getItem("julequiz.admtoken"); if (t) $("#tok").va
 const say = (m, err) => { const e = $("#msg"); e.textContent = m; e.className = "msg" + (err ? " err" : ""); };
 
 function draw(){
-  $("#rows").innerHTML = rows.map((r,i) => `<tr class="${winners.has(r.email)?"win":""}"><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.guess)}</td><td>${esc(fmt(r.at))}</td></tr>`).join("");
+  $("#rows").innerHTML = rows.map((r,i) => `<tr class="${winners.has(r.email)?"win":""}"><td><input type="checkbox" data-e="${esc(r.email)}" ${sel.has(r.email)?"checked":""} aria-label="Select ${esc(r.name)}"></td><td>${i+1}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.guess)}</td><td>${esc(fmt(r.at))}</td></tr>`).join("");
 }
 
 async function load(){
@@ -80,7 +82,7 @@ async function load(){
     if (res.status === 401) throw new Error("Wrong admin token (or ADMIN_TOKEN is not set in Vercel).");
     if (res.status === 503) throw new Error("The database is not connected. Check the Upstash variables in Vercel and redeploy.");
     if (!res.ok) throw new Error("Something went wrong (" + res.status + ").");
-    rows = await res.json(); winners = new Set();
+    rows = await res.json(); winners = new Set(); sel = new Set();
     try { sessionStorage.setItem("julequiz.admtoken", token); } catch(e){}
     say(`Connected. ${rows.length} answer${rows.length===1?"":"s"} for “${cur.name}”.`);
     $("#out").hidden = false; $("#note").textContent = ""; draw();
@@ -108,7 +110,22 @@ $("#del").addEventListener("click", async () => {
   if (!confirm(`Permanently delete all ${rows.length} answers for “${cur.name}”? This cannot be undone.`)) return;
   const res = await fetch("/api/answers?q=" + encodeURIComponent(cur.id), { method:"DELETE", headers:{ Authorization:"Bearer " + $("#tok").value.trim() } });
   if (!res.ok) return say("Could not delete (" + res.status + ").", true);
-  rows = []; winners = new Set(); draw(); $("#note").textContent = ""; say("All answers for “" + cur.name + "” were deleted.");
+  rows = []; winners = new Set(); sel = new Set(); draw(); sync(); $("#note").textContent = ""; say("All answers for “" + cur.name + "” were deleted.");
+});
+function sync(){
+  $("#delsel").disabled = !sel.size; $("#delsel").textContent = sel.size ? `Delete selected (${sel.size})` : "Delete selected";
+  $("#all").checked = rows.length > 0 && sel.size === rows.length;
+}
+$("#rows").addEventListener("change", e => { const el = e.target.closest("input[data-e]"); if (!el) return; el.checked ? sel.add(el.dataset.e) : sel.delete(el.dataset.e); sync(); });
+$("#all").addEventListener("change", e => { sel = e.target.checked ? new Set(rows.map(r => r.email)) : new Set(); draw(); sync(); });
+$("#delsel").addEventListener("click", async () => {
+  const list = rows.filter(r => sel.has(r.email));
+  if (!list.length || !confirm(`Permanently delete ${list.length} answer${list.length===1?"":"s"}?\n\n` + list.slice(0,10).map(r => r.name + " <" + r.email + ">").join("\n") + (list.length>10 ? "\n…and " + (list.length-10) + " more" : "") + "\n\nThis cannot be undone.")) return;
+  const qs = "q=" + encodeURIComponent(cur.id) + list.map(r => "&email=" + encodeURIComponent(r.email)).join("");
+  const res = await fetch("/api/answers?" + qs, { method:"DELETE", headers:{ Authorization:"Bearer " + $("#tok").value.trim() } });
+  if (!res.ok) return say("Could not delete (" + res.status + ").", true);
+  rows = rows.filter(r => !sel.has(r.email)); winners = new Set([...winners].filter(e => rows.some(r => r.email === e))); sel = new Set(); draw(); sync();
+  say(`Deleted ${list.length} answer${list.length===1?"":"s"}. ${rows.length} left.`);
 });
 $("#reset").addEventListener("click", () => mark([], ""));
 $("#random").addEventListener("click", () => {

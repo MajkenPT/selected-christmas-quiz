@@ -282,7 +282,7 @@ const store = {
       if (res.status === 409) throw new Error("duplicate");
       if (res.status === 403) throw new Error("closed");
       if (!res.ok) throw new Error("failed");
-      try { doc = { ...doc, epoch: (await res.json()).epoch }; } catch(e){}
+      try { doc = { ...doc, id: (await res.json()).id }; } catch(e){}
     }
     const a = mineAll(); a[doc.q] = doc; lsSet(mineKey(), JSON.stringify(a));
   }
@@ -461,11 +461,12 @@ async function loadOwn(q){
   showForm(q);
   try {
     let doc = await store.get(q.id);
-    /* If an admin has cleared the answers since this phone answered, forget the old answer so it can answer again. */
+    /* If an admin has deleted this phone's answer, forget it so the phone can answer again. */
     if (doc && BACKEND === "api" && !clockOffset){
-      try {
-        const r = await fetch("/api/answer?q=" + encodeURIComponent(q.id), { cache:"no-store" });
-        if (r.ok && String(doc.epoch) !== String((await r.json()).epoch)){ await store.remove(q.id); doc = null; }
+      if (!doc.id){ await store.remove(q.id); doc = null; }
+      else try {
+        const r = await fetch("/api/answer?q=" + encodeURIComponent(q.id) + "&id=" + encodeURIComponent(doc.id), { cache:"no-store" });
+        if (r.ok && !(await r.json()).exists){ await store.remove(q.id); doc = null; }
       } catch(e){}
     }
     if (doc && $("#qbody")) showConfirm(q, doc);
