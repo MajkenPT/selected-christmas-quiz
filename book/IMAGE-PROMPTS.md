@@ -42,6 +42,29 @@ Tool notes: ChatGPT and Gemini accept several images in one message. In Midjourn
 `--sref` (or an image prompt) for the office. Photos of the office are fine to use internally, but keep screens,
 documents and people in them out of the shots.
 
+### Selected HQ: reference photos and description
+
+Photos you have: **A** entrance facade (dark timber, concrete, tall glass doors), **B** facade from below with pine tree and chimney,
+**C** atrium with concrete column, stairs and terrazzo floor, **D** lobby with lounge area, black steel box and view into the showroom,
+**E** stairwell seen from above with bronze railing and courtyard window.
+
+Add this sentence to the office line, it helps the tool when the photo does not show everything:
+
+> The office is a modern Scandinavian building: charred dark timber cladding outside, raw board-marked concrete walls and columns,
+> speckled light terrazzo floors, travertine stone blocks, black steel details, bronze-coloured railings, warm recessed spotlights.
+
+| Episode | Attach | Note |
+|---|---|---|
+| 01 | A + D | Elves arriving at the glass doors / lobby |
+| 05 | D | Candy cart in the lounge area |
+| 07 | D | Gift on one of the travertine blocks |
+| 09 | E | Bins at the foot of the stairs |
+| 10 | A (+ B) | Locked door outside, early morning |
+| 11 | C | Reindeer filling the atrium |
+| 12 | E or C | Hiding in a tree beside the railings |
+| 13 | C | Selfie in the atrium |
+| 02, 03, 04, 06, 08 | none yet | Kitchen, desks, meeting room and printer are not in the photos. Send me photos of those, or use the sentence above and let the tool invent the room in the same style. |
+
 **Style line (paste at the end of every prompt):**
 
 > Warm, glossy, slightly cartoonish editorial photo style, shallow depth of field, cosy golden fairy lights, the real office from the
