@@ -21,7 +21,8 @@ Make sure both colleagues are fine with being turned into elves before this goes
 **Character line (paste at the start of every prompt):**
 
 > Use the attached photo as the face and hair reference. Two young women, the two elves of the story.
-> JOHANNE: *[describe: hair, eyes]*. LINE: *[describe: hair, eyes]*.
+> JOHANNE (left in the photo, black top): very long, wavy blonde hair with a centre parting, brown eyes, a wide smile.
+> LINE (right in the photo, grey knit top): long, straight light auburn / strawberry-blonde hair, blue eyes, light freckles, a gentle smile.
 > Both wear red Santa/elf hats with white fur trim and red-and-green Nordic knit Christmas jumpers. Keep their faces, hair and
 > proportions true to the photo.
 
