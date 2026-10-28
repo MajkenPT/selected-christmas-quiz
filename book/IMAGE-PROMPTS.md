@@ -46,7 +46,10 @@ documents and people in them out of the shots.
 
 Photos you have: **A** entrance facade (dark timber, concrete, tall glass doors), **B** facade from below with pine tree and chimney,
 **C** atrium with concrete column, stairs and terrazzo floor, **D** lobby with lounge area, black steel box and view into the showroom,
-**E** stairwell seen from above with bronze railing and courtyard window.
+**E** stairwell seen from above with bronze railing and courtyard window,
+**F** kitchenette (dark oak cabinets, bronze splashback, oak floor), **G** print room (copier, shelving, paper boxes, cardboard bin),
+**H** desk area (light desks, black desk lamps, window to the forest), **I** meeting room (black table, white pendant lamp, wall screen),
+**J** the same meeting room seen through the glass wall and oak door.
 
 Add this sentence to the office line, it helps the tool when the photo does not show everything:
 
@@ -56,14 +59,21 @@ Add this sentence to the office line, it helps the tool when the photo does not 
 | Episode | Attach | Note |
 |---|---|---|
 | 01 | A + D | Elves arriving at the glass doors / lobby |
+| 02 | F | Peppernut jar on the kitchenette counter |
+| 03 | H | Garlands and tiny reindeer on the light desks and black lamps |
+| 04 | I (+ J) | Add a whiteboard with the agenda on the wall next to the screen |
 | 05 | D | Candy cart in the lounge area |
+| 06 | G | Hiding behind the copier, candy cane in the paper tray |
 | 07 | D | Gift on one of the travertine blocks |
-| 09 | E | Bins at the foot of the stairs |
+| 08 | F | Hot chocolate bar on the kitchenette counter |
+| 09 | E (+ G) | Bins at the foot of the stairs, or beside the cardboard bin in the print room |
 | 10 | A (+ B) | Locked door outside, early morning |
 | 11 | C | Reindeer filling the atrium |
 | 12 | E or C | Hiding in a tree beside the railings |
 | 13 | C | Selfie in the atrium |
-| 02, 03, 04, 06, 08 | none yet | Kitchen, desks, meeting room and printer are not in the photos. Send me photos of those, or use the sentence above and let the tool invent the room in the same style. |
+
+Always add: *"No readable text or logos on screens, shelves, boxes or walls, except the signs and mugs described in the scene."*
+Photos D, G and I show brand names, labels and a wall screen with text; without this line the tool tends to copy or garble them.
 
 **Style line (paste at the end of every prompt):**
 
