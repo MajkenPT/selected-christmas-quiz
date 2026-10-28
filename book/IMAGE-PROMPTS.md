@@ -26,10 +26,26 @@ Make sure both colleagues are fine with being turned into elves before this goes
 > Both wear red Santa/elf hats with white fur trim and red-and-green Nordic knit Christmas jumpers. Keep their faces, hair and
 > proportions true to the photo.
 
+## Using your own office as the background
+
+Attach 2–4 photos of the HQ as extra reference images in every prompt, next to the photo of the two colleagues:
+the entrance, the kitchen/kitchenette, a desk area, a meeting room, the cardboard baler on Floor -1 and so on.
+Pick the photos that match the episode (the entrance for 01 and 10, the kitchen for 02, 06 and 08, desks for 03 and 11, a
+meeting room for 04, the waste area for 09). Use daylight photos taken straight on, without people in them.
+
+Say which image is which, so the tool does not mix them up:
+
+> Image 1 is the face reference for Johanne and Line. Image 2 is the real office; use its architecture, materials,
+> colours and lighting as the setting. Place the elves and the props inside that space.
+
+Tool notes: ChatGPT and Gemini accept several images in one message. In Midjourney use `--cref` for the faces and
+`--sref` (or an image prompt) for the office. Photos of the office are fine to use internally, but keep screens,
+documents and people in them out of the shots.
+
 **Style line (paste at the end of every prompt):**
 
-> Warm, glossy, slightly cartoonish editorial photo style, shallow depth of field, cosy golden fairy lights, a modern
-> Scandinavian fashion-company office as the background, square 1:1, no headline text, no watermark.
+> Warm, glossy, slightly cartoonish editorial photo style, shallow depth of field, cosy golden fairy lights, the real office from the
+> attached reference photo as the background, square 1:1, no headline text, no watermark.
 
 ## Scenes
 
