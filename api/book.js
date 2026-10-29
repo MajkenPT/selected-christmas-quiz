@@ -39,15 +39,16 @@ function parse(src) {
       const m = line.trim().match(/^(Rules broken|Rules followed|Christmas spirit|Santa's stress level|Elf certification):\s*(.+)$/);
       if (m) ep.report[m[1]] = m[2]; else if (line.trim()) ep.outro.push(line.trim());
     }
+    let letter = false; /* paragraphs between "DEAR ..." and the next bold card are the letter, shown in italics */
     for (const raw of body.split(/\n\s*\n/)) {
       const x = raw.trim();
       if (!x) continue;
       if (/^\*\*TO BE CONTINUED/.test(x)) continue;
       if (/^\*\*THE END/.test(x)) { ep.blocks.push({ t: "end", x: x.replace(/\*/g, "") }); continue; }
-      if (/^\*\*DEAR /.test(x)) { ep.blocks.push({ t: "dear", x: x.replace(/\*/g, "") }); continue; }
-      if (/^\*\*[^*]+\*\*$/.test(x)) { ep.blocks.push({ t: "card", x: x.replace(/\*/g, "") }); continue; }
+      if (/^\*\*DEAR /.test(x)) { letter = true; ep.blocks.push({ t: "dear", x: x.replace(/\*/g, "") }); continue; }
+      if (/^\*\*[^*]+\*\*$/.test(x)) { letter = false; ep.blocks.push({ t: "card", x: x.replace(/\*/g, "") }); continue; }
       if (/^\*[^*]+\*$/.test(x)) { ep.blocks.push({ t: "note", x: x.slice(1, -1) }); continue; }
-      ep.blocks.push({ t: /^"/.test(x) ? "say" : "p", x });
+      ep.blocks.push(letter && !/^"/.test(x) ? { t: "p", x, l: 1 } : { t: /^"/.test(x) ? "say" : "p", x });
     }
     return ep;
   });
