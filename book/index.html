@@ -391,7 +391,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     data.episodes.forEach(function (ep) {
       pages.push({ n: ep.no, ep: ep, kind: "img" });
       if (!ep.unlocked) pages.push({ n: ep.no, ep: ep, kind: "sealed" });
-      else paginate(ep).forEach(function (bl, i, all) { pages.push({ n: ep.no, ep: ep, kind: "text", blocks: bl, i: i, cnt: all.length }); });
+      else { var off = 0; paginate(ep).forEach(function (bl, i, all) { pages.push({ n: ep.no, ep: ep, kind: "text", blocks: bl, i: i, cnt: all.length, from: off }); off += bl.length; }); }
       /* in the two-page view a chapter must fill whole spreads, so a leftover right-hand page gets an ornament */
       if (!mobile && (pages.length - 1) % 2 === 1) pages.push({ n: ep.no, ep: ep, kind: "filler" });
     });
@@ -704,22 +704,57 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     idxs.forEach(function (i, k) { out.push({ idx: i, f: acc / total }); acc += ws[k]; });
     return out;
   }
+  /* where on the pages each spoken part sits: {key, idx, t0, t1, w} (w = start time of each word) */
+  function audioSegs(n, map) {
+    var out = [], imgIdx = -1;
+    pages.forEach(function (p, i) { if (p.n === n && p.kind === "img") imgIdx = i; });
+    out.push({ key: "e", idx: imgIdx, t0: map.e[0], t1: map.e[1] }, { key: "t", idx: imgIdx, t0: map.t[0], t1: map.t[1] }, { key: "g", idx: imgIdx, t0: map.g[0], t1: map.g[1] });
+    function at(g) { for (var i = 0; i < pages.length; i++) { var p = pages[i]; if (p.n === n && p.kind === "text" && g >= p.from && g < p.from + p.blocks.length) return { idx: i, j: g - p.from }; } return null; }
+    map.b.forEach(function (m, g) { var l = at(g); if (l) out.push({ key: String(l.j), idx: l.idx, t0: m.s, t1: m.e, w: m.w }); });
+    var tl = at(map.b.length); if (tl) out.push({ key: String(tl.j), idx: tl.idx, t0: map.tail[0], t1: map.tail[1] });
+    return out;
+  }
   function playAudio(n) {
-    var a = audio = new Audio(chapterAudio(n)); a.preload = "auto"; a.playbackRate = arate; var plan = null;
+    var ep = data.episodes[n - 1], a = audio = new Audio(ep.audio); a.preload = "auto"; a.playbackRate = arate;
+    var plan = null, segs = null, cur = null, raf = 0;
     a.addEventListener("loadedmetadata", function () {
       if (a !== audio) return;
-      plan = audioPlan(n).map(function (p) { return { idx: p.idx, t: p.f * a.duration }; });
+      if (ep.audioMap) {
+        segs = audioSegs(n, ep.audioMap);
+        plan = [{ idx: segs[0].idx, t: 0 }];
+        var seen = {}; segs.forEach(function (g) { if (g.idx !== segs[0].idx && !seen[g.idx]) { seen[g.idx] = 1; plan.push({ idx: g.idx, t: g.t0 }); } });
+      } else plan = audioPlan(n).map(function (p) { return { idx: p.idx, t: p.f * a.duration }; });
       var vis = visiblePageIdx(), start = null;
       plan.forEach(function (p, k) { if (vis.indexOf(p.idx) !== -1 && start === null) start = k === 0 ? 0 : p.t; });
-      a.currentTime = start || 0; a.play().catch(function () { stopReading(); });
+      a.currentTime = start || 0; a.play().then(function () { raf = requestAnimationFrame(frame); }).catch(function () { stopReading(); });
     });
-    a.ontimeupdate = function () {
-      if (!plan || a !== audio) return;
-      $("#aprog").style.width = (a.currentTime / a.duration * 100) + "%";
-      var target = plan[0]; plan.forEach(function (p) { if (a.currentTime >= p.t) target = p; });
+    function frame() {
+      if (a !== audio) return;
+      var t = a.currentTime; $("#aprog").style.width = (t / a.duration * 100) + "%";
+      /* turn the page when the voice reaches the next one (a little ahead, as the turn takes a moment) */
+      var target = plan[0]; plan.forEach(function (p) { if (t >= p.t - .6) target = p; });
       var vis = visiblePageIdx();
       if (vis.indexOf(target.idx) === -1 && target.idx > Math.max.apply(null, vis)) { turning = true; goTo(spreadFor(target.idx)); turning = false; }
-    };
+      /* mark the part being read, and the word */
+      if (segs) {
+        var sg = null; segs.forEach(function (g) { if (t >= g.t0 - .05) sg = g; });
+        if (sg && sg !== cur && vis.indexOf(sg.idx) !== -1) {
+          cur = sg; clearHl();
+          var el = elFor({ idx: sg.idx, key: sg.key });
+          if (el) { if (HL) { var r = textRange(el, 0, el.textContent.length); if (r) hlSent.add(r); else { el.classList.add("reading"); hlEl = el; } } else { el.classList.add("reading"); hlEl = el; } }
+        }
+        if (cur && cur.w && HL && t <= cur.t1 + .4) {
+          var k = 0; cur.w.forEach(function (x, i) { if (t >= x) k = i; });
+          var el2 = elFor({ idx: cur.idx, key: cur.key });
+          if (el2) {
+            var txt = el2.textContent, re = /\S+/g, pos = Math.floor(k / cur.w.length * txt.length), m, hit = null;
+            while ((m = re.exec(txt))) { if (m.index + m[0].length > pos) { hit = m; break; } }
+            if (hit) { var len = hit[0].replace(/[.,!?;:"')]+$/, "").length || hit[0].length, rg = textRange(el2, hit.index, hit.index + len); hlWord.clear(); if (rg) hlWord.add(rg); }
+          }
+        }
+      }
+      raf = requestAnimationFrame(frame);
+    }
     a.onended = function () { if (a === audio) stopReading(); };
     a.onerror = function () { if (a === audio) stopReading(); };
   }
