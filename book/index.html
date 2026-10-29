@@ -171,7 +171,21 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 @keyframes lbin{from{opacity:0;transform:scale(.82)}}
 #lbCap{color:var(--cream);font-size:12px;letter-spacing:.14em;text-transform:uppercase;text-align:center}
 #lbX{position:absolute;right:10px;top:8px;width:40px;height:40px;background:none;border:0;color:var(--cream);font:inherit;font-size:28px;cursor:pointer}
-#listen{position:fixed;top:12px;right:12px;z-index:6;appearance:none;background:rgba(31,58,46,.7);color:var(--cream);border:1.5px solid rgba(244,239,230,.55);height:36px;padding:0 12px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px}
+#readbar{position:fixed;top:12px;right:12px;z-index:6;display:flex;gap:8px}
+#readbar[hidden]{display:none}
+#readbar button{appearance:none;background:rgba(31,58,46,.7);color:var(--cream);border:1.5px solid rgba(244,239,230,.55);height:36px;padding:0 12px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px}
+#readbar button:hover{background:rgba(244,239,230,.16)}#listen.on{background:var(--wine)!important;border-color:var(--wine)!important}
+#vp{position:fixed;top:56px;right:12px;z-index:7;width:min(300px,calc(100vw - 24px));background:var(--paper);color:var(--ink);border-radius:4px;padding:14px;box-shadow:0 16px 40px rgba(0,0,0,.5);font-size:12px;letter-spacing:.04em;display:flex;flex-direction:column;gap:12px}
+#vp[hidden]{display:none}
+#vp label{display:flex;flex-direction:column;gap:6px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
+#vp label.chk{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:.02em;font-size:12px;color:var(--ink);cursor:pointer}
+#vp label.chk input{accent-color:var(--wine);width:16px;height:16px;flex:none}
+#vp select{font:inherit;font-size:13px;padding:8px;border:1.5px solid var(--forest);background:#fff;color:var(--ink);border-radius:2px;width:100%;text-transform:none;letter-spacing:0}
+#vp input[type=range]{width:100%;accent-color:var(--wine)}
+#vp b{font-weight:400;color:var(--ink)}
+#vTest{appearance:none;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:10px;border:1.5px solid var(--forest);background:none;color:var(--forest);cursor:pointer;border-radius:2px}
+#vTest:hover{background:var(--paper-2)}
+#vNote{margin:0;color:var(--ink-muted);font-size:11px;line-height:1.4}
 #listen[hidden]{display:none}#listen:hover{background:rgba(244,239,230,.16)}#listen.on{background:var(--wine);border-color:var(--wine)}
 .book.jumping .leaf{transition:none!important}
 .book.fadein .leaf{animation:lfade .45s ease-out}
@@ -222,7 +236,8 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   <div class="hint" id="hint"></div>
 </main>
 <div id="lb" hidden><button id="lbX" aria-label="Close">×</button><img id="lbImg" alt=""><div id="lbCap"></div></div>
-<button id="listen" hidden aria-label="Read the pages aloud">▶ Listen</button>
+<div id="readbar" hidden><button id="voiceBtn" aria-label="Voice settings">Voice</button><button id="listen" aria-label="Read the pages aloud">▶ Listen</button></div>
+<div id="vp" hidden role="dialog" aria-label="Voice settings"><label>Voice<select id="vSel"></select></label><label class="chk"><input type="checkbox" id="vSanta"> Santa voice (deeper and slower, with a "Ho ho ho!")</label><label class="chk"><input type="checkbox" id="vBells"> Sleigh bells</label><label>Speed <b id="vRateV"></b><input type="range" id="vRate" min="0.7" max="1.3" step="0.05"></label><button id="vTest" type="button">▶ Try this voice</button><p id="vNote"></p></div>
 <div id="toc" hidden><div class="tb" id="tocBack"></div><div class="toc-panel" role="dialog" aria-modal="true" aria-label="Contents">
   <button class="toc-x" id="tocX" aria-label="Close">×</button><h2>Contents</h2><h3>Elf &amp; Order</h3><ol id="toc-list"></ol>
   <p class="toc-note">A new chapter opens every weekday at 07:00.</p></div></div>
@@ -570,7 +585,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   /* ---------- opening ---------- */
   function openBook() {
     if (opened) return; opened = true;
-    $("#nav").hidden = false; hintText(); if (TTS) $("#listen").hidden = false;
+    $("#nav").hidden = false; hintText(); if (TTS) $("#readbar").hidden = false;
     var r = $("#book").getBoundingClientRect(), cx = mobile ? r.left : r.left + r.width / 2;
     burst(cx + 20, r.top + r.height / 2, ["✦", "❄", "✦", "✨"], 26);
     var target = latest(); target = target ? posForEp(target) : (mobile ? 1 : 1);
@@ -589,11 +604,56 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   /* ---------- read aloud (the browser's own voices) ---------- */
   var TTS = window.speechSynthesis && window.SpeechSynthesisUtterance ? window.speechSynthesis : null;
   var reading = false, turning = false, readTok = 0, voice = null;
+  var rate = .95, savedVoice = "", santa = true, bells = true;
+  try { var sv = JSON.parse(localStorage.getItem("book-voice") || "{}"); if (sv.rate) rate = sv.rate; if (sv.name) savedVoice = sv.name; if (sv.santa === false) santa = false; if (sv.bells === false) bells = false; } catch (e) {}
+  function saveVoice() { try { localStorage.setItem("book-voice", JSON.stringify({ rate: rate, name: voice ? voice.name : "", santa: santa, bells: bells })); } catch (e) {} }
+  function enVoices() { return TTS ? TTS.getVoices().filter(function (v) { return /^en/i.test(v.lang); }) : []; }
   function pickVoice() {
     if (!TTS) return;
-    var vs = TTS.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
-    voice = vs.filter(function (v) { return /Samantha|Daniel|Serena|Karen|Moira|Google UK English|Natural|Online/i.test(v.name); })[0] || vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); })[0] || vs[0] || null;
+    var vs = enVoices();
+    voice = vs.filter(function (v) { return v.name === savedVoice; })[0] ||
+      vs.filter(function (v) { return /Daniel|Fred|Alex|Aaron|Arthur|Google UK English Male|David|Mark|Guy|Ryan|George/i.test(v.name); })[0] || vs.filter(function (v) { return /Samantha|Serena|Karen|Moira|Google UK English|Natural|Online/i.test(v.name); })[0] || vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); })[0] || vs[0] || null;
+    var sel = $("#vSel"); sel.innerHTML = "";
+    if (!vs.length) { sel.innerHTML = "<option>Default voice of this device</option>"; $("#vNote").textContent = "This device offers one standard voice. Other voices can be added in the device's settings (accessibility / speech)."; }
+    else { vs.forEach(function (v) { var o = document.createElement("option"); o.value = v.name; o.textContent = v.name + " · " + v.lang; if (voice && v.name === voice.name) o.selected = true; sel.appendChild(o); }); $("#vNote").textContent = "The voices come from your own device, so they differ between phones and computers."; }
+    $("#vRate").value = rate; $("#vRateV").textContent = "×" + rate.toFixed(2); $("#vSanta").checked = santa; $("#vBells").checked = bells;
   }
+  function restartIfReading() { if (reading) readNow(); }
+  $("#voiceBtn").onclick = function (e) { e.stopPropagation(); $("#vp").hidden = !$("#vp").hidden; };
+  $("#vp").addEventListener("click", function (e) { e.stopPropagation(); });
+  document.addEventListener("click", function () { $("#vp").hidden = true; });
+  $("#vSel").onchange = function () { voice = enVoices().filter(function (v) { return v.name === $("#vSel").value; })[0] || voice; saveVoice(); restartIfReading(); };
+  $("#vRate").oninput = function () { rate = parseFloat($("#vRate").value); $("#vRateV").textContent = "×" + rate.toFixed(2); saveVoice(); };
+  $("#vRate").onchange = restartIfReading;
+  $("#vSanta").onchange = function () { santa = $("#vSanta").checked; saveVoice(); restartIfReading(); };
+  $("#vBells").onchange = function () { bells = $("#vBells").checked; saveVoice(); if (bells) jingle(); };
+  /* sleigh bells made with the browser's own sound engine, no sound files */
+  var AC = window.AudioContext || window.webkitAudioContext, ac = null;
+  function jingle() {
+    if (!bells || !AC) return;
+    try {
+      ac = ac || new AC(); if (ac.state === "suspended") ac.resume();
+      var t = ac.currentTime;
+      [0, .06, .13, .2, .29, .36].forEach(function (d, i) {
+        var f = [2637, 3136, 3520, 3951][i % 4];
+        [[f, "triangle", .09], [f * 2.76, "sine", .04]].forEach(function (pt) {
+          var o = ac.createOscillator(), g = ac.createGain(); o.type = pt[1]; o.frequency.value = pt[0];
+          g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(pt[2], t + d + .005); g.gain.exponentialRampToValueAtTime(.0001, t + d + .55);
+          o.connect(g); g.connect(ac.destination); o.start(t + d); o.stop(t + d + .6);
+        });
+      });
+    } catch (e) {}
+  }
+  function utter(text, extra) {
+    var u = new SpeechSynthesisUtterance(text); u.lang = voice ? voice.lang : "en-GB"; if (voice) u.voice = voice;
+    u.rate = santa ? rate * .9 : rate; u.pitch = santa ? .55 : 1;
+    if (extra) { if (extra.rate) u.rate = extra.rate; if (extra.pitch) u.pitch = extra.pitch; }
+    return u;
+  }
+  $("#vTest").onclick = function () {
+    if (!TTS) return; stopReading(); TTS.cancel();
+    jingle(); TTS.speak(utter((santa ? "Ho, ho, ho! " : "") + "Johanne adjusted her elf hat. Listen carefully. I survived last Christmas."));
+  };
   if (TTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
   function say(t) { t = String(t); if (!/[a-z]/.test(t)) t = t.toLowerCase(); return t.replace(/\*/g, "").replace(/\s*\+\s*/g, " plus ").replace(/(\d)%/g, "$1 percent").replace(/\s+/g, " ").trim(); }
   function sealedPage(p) { return p && p.ep && !p.ep.unlocked && p.kind !== "filler"; }
@@ -626,26 +686,30 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   }
   function setReading(on) { reading = on; var b = $("#listen"); b.classList.toggle("on", on); b.textContent = on ? "■ Stop" : "▶ Listen"; }
   function stopReading() { readTok++; if (reading && TTS) TTS.cancel(); if (reading) setReading(false); }
-  function readNow() {
+  function readNow(intro) {
     var tok = ++readTok; TTS.cancel();
+    if (intro) { var iu = utter(intro, { rate: .75, pitch: .45 }); TTS.speak(iu); }
     var idxs = visiblePageIdx().filter(function (i) { return pages[i]; }), stop = false, list = [];
     idxs.forEach(function (i) { if (sealedPage(pages[i])) stop = true; else list = list.concat(speech(pages[i])); });
     var parts = chunks(list);
     function after() {
       if (tok !== readTok || !reading) return;
       if (stop || pos >= maxPos()) { stopReading(); return; }
-      turning = true; goTo(pos + 1); turning = false;
+      jingle(); turning = true; goTo(pos + 1); turning = false;
       setTimeout(function () { if (reading && tok === readTok) readNow(); }, 1300);
     }
     if (!parts.length) { after(); return; }
     parts.forEach(function (c, j) {
-      var u = new SpeechSynthesisUtterance(c); u.rate = .95; u.lang = voice ? voice.lang : "en-GB"; if (voice) u.voice = voice;
+      var u = utter(c);
       if (j === parts.length - 1) u.onend = after;
       u.onerror = function (ev) { if (tok === readTok && ev.error !== "interrupted" && ev.error !== "canceled") stopReading(); };
       TTS.speak(u);
     });
   }
-  $("#listen").onclick = function () { if (reading) { stopReading(); return; } if (!TTS) return; setReading(true); readNow(); };
+  $("#listen").onclick = function () {
+    if (reading) { stopReading(); return; } if (!TTS) return;
+    setReading(true); jingle(); readNow(santa ? "Ho, ho, ho!" : "");
+  };
   addEventListener("pagehide", function () { if (TTS) TTS.cancel(); });
 
   /* ---------- countdowns, resize, input ---------- */
@@ -666,7 +730,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       if (keep && opened) want = currentEp(); buildNav(); render();
       if (!keep) {
         var was = false; try { was = sessionStorage.getItem("book-opened"); } catch (e) {}
-        if (was) { opened = true; $("#nav").hidden = false; if (TTS) $("#listen").hidden = false; var n = latest(); pos = n ? posForEp(n) : 1; render(); }
+        if (was) { opened = true; $("#nav").hidden = false; if (TTS) $("#readbar").hidden = false; var n = latest(); pos = n ? posForEp(n) : 1; render(); }
       }
     }).catch(function () {
       $("#stage").innerHTML = '<div class="msg-full"><div>The elves have misplaced the book.<br><br><button class="open" style="font:inherit;color:inherit;border:1.5px solid;background:none;padding:.8em 1.4em;cursor:pointer" onclick="location.reload()">TRY AGAIN</button></div></div>';
@@ -681,7 +745,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   });
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { closeToc(); closeLb(); return; }
+    if (e.key === "Escape") { closeToc(); closeLb(); $("#vp").hidden = true; return; }
     if (!$("#toc").hidden) return;
     if (!opened) { if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") openBook(); return; }
     if (e.key === "ArrowRight") goTo(pos + 1); else if (e.key === "ArrowLeft") goTo(pos - 1);
