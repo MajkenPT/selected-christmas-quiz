@@ -7,6 +7,7 @@ const STORY = require("./_story.js");
 const YEAR = 2026;
 const UNLOCK_TIME = "07:00:00+01:00"; /* Danish time, the morning the link is mailed */
 const MONTHS = { DECEMBER: "12" };
+const AUDIO = { 1: "/book/audio/ep01.mp3" }; /* chapters with a recording, sent only once the chapter has unlocked */
 
 const same = (a, b) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 
@@ -68,7 +69,7 @@ module.exports = (req, res) => {
   const episodes = book.episodes.map(ep => {
     const unlocked = now >= new Date(ep.unlockAt);
     const out = { no: ep.no, date: ep.date, unlockAt: ep.unlockAt, unlocked };
-    if (unlocked) Object.assign(out, { title: ep.title, tagline: ep.tagline, blocks: ep.blocks, reportTitle: ep.reportTitle, report: ep.report, outro: ep.outro });
+    if (unlocked) Object.assign(out, AUDIO[ep.no] ? { audio: AUDIO[ep.no] } : {}, { title: ep.title, tagline: ep.tagline, blocks: ep.blocks, reportTitle: ep.reportTitle, report: ep.report, outro: ep.outro });
     return out;
   });
   res.setHeader("content-type", "application/json");

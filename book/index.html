@@ -171,6 +171,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 @keyframes lbin{from{opacity:0;transform:scale(.82)}}
 #lbCap{color:var(--cream);font-size:12px;letter-spacing:.14em;text-transform:uppercase;text-align:center}
 #lbX{position:absolute;right:10px;top:8px;width:40px;height:40px;background:none;border:0;color:var(--cream);font:inherit;font-size:28px;cursor:pointer}
+#aprog{position:fixed;left:0;top:0;height:3px;width:0;background:var(--wine);z-index:90;pointer-events:none;transition:width .35s linear}
 #readbar{position:fixed;top:12px;right:12px;z-index:6;display:flex;gap:8px}
 #readbar[hidden]{display:none}
 #readbar button{appearance:none;background:rgba(31,58,46,.7);color:var(--cream);border:1.5px solid rgba(244,239,230,.55);height:36px;padding:0 12px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px}
@@ -233,6 +234,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   <div class="hint" id="hint"></div>
 </main>
 <div id="lb" hidden><button id="lbX" aria-label="Close">×</button><img id="lbImg" alt=""><div id="lbCap"></div></div>
+<div id="aprog"></div>
 <div id="readbar" hidden><button id="voiceBtn" aria-label="Reading speed">Speed</button><button id="listen" aria-label="Read the pages aloud">▶ Listen</button></div>
 <div id="vp" hidden role="dialog" aria-label="Reading speed"><label>Reading speed <b id="vRateV"></b><input type="range" id="vRate" min="0.7" max="1.5" step="0.05"></label></div>
 <div id="toc" hidden><div class="tb" id="tocBack"></div><div class="toc-panel" role="dialog" aria-modal="true" aria-label="Contents">
@@ -511,7 +513,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     var cur = currentEp();
     Array.prototype.forEach.call($("#dots").children, function (b, i) { b.classList.toggle("cur", i + 1 === cur); });
     $("#lbl").textContent = cur === 0 ? "Cover" : cur === 14 ? "The end" : "Ep " + cur + " / 13";
-    $("#homeBtn").disabled = pos === 0;
+    $("#homeBtn").disabled = pos === 0; if (typeof showRate === "function" && data) showRate();
     Array.prototype.forEach.call($("#toc-list").children, function (li, i) { li.classList.toggle("cur", i + 1 === cur); });
   }
   function openToc() { $("#toc").hidden = false; var c = $("#toc-list .cur button") || $("#toc-list button"); if (c) c.focus({ preventScroll: true }); $("#toc-list").scrollTop = 0; }
@@ -582,7 +584,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   /* ---------- opening ---------- */
   function openBook() {
     if (opened) return; opened = true;
-    $("#nav").hidden = false; hintText(); if (TTS) $("#readbar").hidden = false;
+    $("#nav").hidden = false; hintText(); if (TTS || hasAudio()) $("#readbar").hidden = false;
     var r = $("#book").getBoundingClientRect(), cx = mobile ? r.left : r.left + r.width / 2;
     burst(cx + 20, r.top + r.height / 2, ["✦", "❄", "✦", "✨"], 26);
     var target = latest(); target = target ? posForEp(target) : (mobile ? 1 : 1);
@@ -600,21 +602,26 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 
   /* ---------- read aloud (the browser's own voice), with the text marked as it is read ---------- */
   var TTS = window.speechSynthesis && window.SpeechSynthesisUtterance ? window.speechSynthesis : null;
-  var reading = false, turning = false, readTok = 0, voice = null, rate = 1.05;
-  try { var sv = JSON.parse(localStorage.getItem("book-voice-2") || "{}"); if (sv.rate) rate = sv.rate; } catch (e) {}
+  var reading = false, turning = false, readTok = 0, voice = null, rate = 1.05, arate = 1, audio = null;
+  try { var sv = JSON.parse(localStorage.getItem("book-voice-2") || "{}"); if (sv.rate) rate = sv.rate; if (sv.arate) arate = sv.arate; } catch (e) {}
   function pickVoice() {
     if (!TTS) return;
     var vs = TTS.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
     voice = vs.filter(function (v) { return /Samantha|Daniel|Serena|Karen|Moira|Google UK English|Natural|Online/i.test(v.name); })[0] || vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); })[0] || vs[0] || null;
   }
   if (TTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
-  function showRate() { $("#vRate").value = rate; $("#vRateV").textContent = "×" + rate.toFixed(2); $("#voiceBtn").textContent = "Speed ×" + rate.toFixed(2); }
+  function audioMode() { return !!audio || !!chapterAudio(currentEp()); }
+  function showRate() { var r = audioMode() ? arate : rate; $("#vRate").value = r; $("#vRateV").textContent = "×" + r.toFixed(2); $("#voiceBtn").textContent = "Speed ×" + r.toFixed(2); }
   showRate();
   $("#voiceBtn").onclick = function (e) { e.stopPropagation(); $("#vp").hidden = !$("#vp").hidden; };
   $("#vp").addEventListener("click", function (e) { e.stopPropagation(); });
   document.addEventListener("click", function () { $("#vp").hidden = true; });
-  $("#vRate").oninput = function () { rate = parseFloat($("#vRate").value); showRate(); try { localStorage.setItem("book-voice-2", JSON.stringify({ rate: rate })); } catch (e) {} };
-  $("#vRate").onchange = function () { if (reading) readNow(); };
+  $("#vRate").oninput = function () {
+    var v = parseFloat($("#vRate").value);
+    if (audioMode()) { arate = v; if (audio) audio.playbackRate = arate; } else rate = v;
+    showRate(); try { localStorage.setItem("book-voice-2", JSON.stringify({ rate: rate, arate: arate })); } catch (e) {}
+  };
+  $("#vRate").onchange = function () { if (reading && !audio) readNow(); };
 
   function say(t) { t = String(t); if (!/[a-z]/.test(t)) t = t.toLowerCase(); return t.replace(/\*/g, "").replace(/\s*\+\s*/g, " plus ").replace(/(\d)%/g, "$1 percent").replace(/\s+/g, " ").trim(); }
   function sealedPage(p) { return p && p.ep && !p.ep.unlocked && p.kind !== "filler"; }
@@ -680,7 +687,42 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   }
 
   function setReading(on) { reading = on; var b = $("#listen"); b.classList.toggle("on", on); b.textContent = on ? "■ Stop" : "▶ Listen"; }
-  function stopReading() { readTok++; if (reading && TTS) TTS.cancel(); if (reading) setReading(false); clearHl(); }
+  function stopReading() {
+    readTok++; if (reading && TTS) TTS.cancel();
+    if (audio) { audio.pause(); audio.onended = audio.ontimeupdate = null; audio = null; $("#aprog").style.width = "0"; }
+    if (reading) setReading(false); clearHl();
+  }
+  /* ---- recorded narration: plays the mp3 and turns the pages along with it (page times are estimated from how much text each page holds) ---- */
+  function chapterAudio(n) { var ep = data && data.episodes[n - 1]; return ep && ep.unlocked && ep.audio ? ep.audio : null; }
+  function hasAudio() { return !!data && data.episodes.some(function (e) { return e.unlocked && e.audio; }); }
+  function spreadFor(idx) { return mobile ? idx : Math.ceil(idx / 2); }
+  function audioPlan(n) {
+    var w = function (list) { return list.reduce(function (a, it) { return a + it.text.length + 16; }, 0); };
+    var pre = n === 1 ? w([{ text: data.meta.title + "." }, { text: data.meta.tagline }, { text: data.meta.blurb }]) : 0;
+    var idxs = []; pages.forEach(function (p, i) { if (p.n === n && (p.kind === "img" || p.kind === "text")) idxs.push(i); });
+    var ws = idxs.map(function (i) { return w(items(i)); }), total = pre + ws.reduce(function (a, b) { return a + b; }, 0), acc = pre, out = [];
+    idxs.forEach(function (i, k) { out.push({ idx: i, f: acc / total }); acc += ws[k]; });
+    return out;
+  }
+  function playAudio(n) {
+    var a = audio = new Audio(chapterAudio(n)); a.preload = "auto"; a.playbackRate = arate; var plan = null;
+    a.addEventListener("loadedmetadata", function () {
+      if (a !== audio) return;
+      plan = audioPlan(n).map(function (p) { return { idx: p.idx, t: p.f * a.duration }; });
+      var vis = visiblePageIdx(), start = null;
+      plan.forEach(function (p, k) { if (vis.indexOf(p.idx) !== -1 && start === null) start = k === 0 ? 0 : p.t; });
+      a.currentTime = start || 0; a.play().catch(function () { stopReading(); });
+    });
+    a.ontimeupdate = function () {
+      if (!plan || a !== audio) return;
+      $("#aprog").style.width = (a.currentTime / a.duration * 100) + "%";
+      var target = plan[0]; plan.forEach(function (p) { if (a.currentTime >= p.t) target = p; });
+      var vis = visiblePageIdx();
+      if (vis.indexOf(target.idx) === -1 && target.idx > Math.max.apply(null, vis)) { turning = true; goTo(spreadFor(target.idx)); turning = false; }
+    };
+    a.onended = function () { if (a === audio) stopReading(); };
+    a.onerror = function () { if (a === audio) stopReading(); };
+  }
   function readNow() {
     var tok = ++readTok; TTS.cancel(); clearHl();
     var idxs = visiblePageIdx().filter(function (i) { return pages[i]; }), stop = false, list = [];
@@ -703,7 +745,12 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       TTS.speak(u);
     });
   }
-  $("#listen").onclick = function () { if (reading) { stopReading(); return; } if (!TTS) return; setReading(true); readNow(); };
+  $("#listen").onclick = function () {
+    if (reading) { stopReading(); return; }
+    var n = currentEp();
+    if (chapterAudio(n)) { setReading(true); playAudio(n); return; }
+    if (!TTS) return; setReading(true); readNow();
+  };
   addEventListener("pagehide", function () { if (TTS) TTS.cancel(); });
 
   /* ---------- countdowns, resize, input ---------- */
@@ -724,7 +771,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       if (keep && opened) want = currentEp(); buildNav(); render();
       if (!keep) {
         var was = false; try { was = sessionStorage.getItem("book-opened"); } catch (e) {}
-        if (was) { opened = true; $("#nav").hidden = false; if (TTS) $("#readbar").hidden = false; var n = latest(); pos = n ? posForEp(n) : 1; render(); }
+        if (was) { opened = true; $("#nav").hidden = false; if (TTS || hasAudio()) $("#readbar").hidden = false; var n = latest(); pos = n ? posForEp(n) : 1; render(); }
       }
     }).catch(function () {
       $("#stage").innerHTML = '<div class="msg-full"><div>The elves have misplaced the book.<br><br><button class="open" style="font:inherit;color:inherit;border:1.5px solid;background:none;padding:.8em 1.4em;cursor:pointer" onclick="location.reload()">TRY AGAIN</button></div></div>';
