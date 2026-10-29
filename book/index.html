@@ -173,7 +173,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 #lbX{position:absolute;right:10px;top:8px;width:40px;height:40px;background:none;border:0;color:var(--cream);font:inherit;font-size:28px;cursor:pointer}
 #aprog{position:fixed;left:0;top:0;height:3px;width:0;background:var(--wine);z-index:90;pointer-events:none;transition:width .35s linear}
 #readbar{position:fixed;top:12px;right:12px;z-index:6;display:flex;gap:8px}
-#readbar[hidden]{display:none}
+#readbar[hidden],#readbar button[hidden]{display:none}
 #readbar button{appearance:none;background:rgba(31,58,46,.7);color:var(--cream);border:1.5px solid rgba(244,239,230,.55);height:36px;padding:0 12px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px}
 #readbar button:hover{background:rgba(244,239,230,.16)}#listen.on{background:var(--wine)!important;border-color:var(--wine)!important}
 #vp{position:fixed;top:56px;right:12px;z-index:7;width:min(260px,calc(100vw - 24px));background:var(--paper);color:var(--ink);border-radius:4px;padding:14px;box-shadow:0 16px 40px rgba(0,0,0,.5);font-size:12px}
@@ -235,7 +235,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 </main>
 <div id="lb" hidden><button id="lbX" aria-label="Close">×</button><img id="lbImg" alt=""><div id="lbCap"></div></div>
 <div id="aprog"></div>
-<div id="readbar" hidden><button id="voiceBtn" aria-label="Reading speed">Speed</button><button id="listen" aria-label="Read the pages aloud">▶ Listen</button></div>
+<div id="readbar" hidden><button id="voiceBtn" aria-label="Reading speed">Speed</button><button id="stopBtn" hidden aria-label="Stop">■ Stop</button><button id="listen" aria-label="Read the pages aloud">▶ Listen</button></div>
 <div id="vp" hidden role="dialog" aria-label="Reading speed"><label>Reading speed <b id="vRateV"></b><input type="range" id="vRate" min="0.7" max="1.5" step="0.05"></label></div>
 <div id="toc" hidden><div class="tb" id="tocBack"></div><div class="toc-panel" role="dialog" aria-modal="true" aria-label="Contents">
   <button class="toc-x" id="tocX" aria-label="Close">×</button><h2>Contents</h2><h3>Elf &amp; Order</h3><ol id="toc-list"></ol>
@@ -602,7 +602,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 
   /* ---------- read aloud (the browser's own voice), with the text marked as it is read ---------- */
   var TTS = window.speechSynthesis && window.SpeechSynthesisUtterance ? window.speechSynthesis : null;
-  var reading = false, turning = false, readTok = 0, voice = null, rate = 1.05, arate = 1, audio = null;
+  var reading = false, paused = false, turning = false, readTok = 0, voice = null, rate = 1.05, arate = 1, audio = null;
   try { var sv = JSON.parse(localStorage.getItem("book-voice-2") || "{}"); if (sv.rate) rate = sv.rate; if (sv.arate) arate = sv.arate; } catch (e) {}
   function pickVoice() {
     if (!TTS) return;
@@ -686,7 +686,18 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     hlWord.clear(); if (r) hlWord.add(r);
   }
 
-  function setReading(on) { reading = on; var b = $("#listen"); b.classList.toggle("on", on); b.textContent = on ? "■ Stop" : "▶ Listen"; }
+  function syncBtn() {
+    var b = $("#listen"); b.classList.toggle("on", reading && !paused);
+    b.textContent = !reading ? "▶ Listen" : paused ? "▶ Resume" : "❚❚ Pause"; $("#stopBtn").hidden = !reading;
+  }
+  function setReading(on) { reading = on; paused = false; syncBtn(); }
+  function pauseReading() { if (!reading || paused) return; paused = true; if (audio) audio.pause(); else if (TTS) TTS.pause(); syncBtn(); }
+  function resumeReading() {
+    if (!reading || !paused) return; paused = false;
+    if (audio) { var a = audio; a.play().then(function () { if (a === audio && a._frame) requestAnimationFrame(a._frame); }).catch(stopReading); }
+    else if (TTS) TTS.resume();
+    syncBtn();
+  }
   function stopReading() {
     readTok++; if (reading && TTS) TTS.cancel();
     if (audio) { audio.pause(); audio.onended = audio.ontimeupdate = null; audio = null; $("#aprog").style.width = "0"; }
@@ -729,7 +740,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       a.currentTime = start || 0; a.play().then(function () { raf = requestAnimationFrame(frame); }).catch(function () { stopReading(); });
     });
     function frame() {
-      if (a !== audio) return;
+      if (a !== audio || a.paused) return;
       var t = a.currentTime; $("#aprog").style.width = (t / a.duration * 100) + "%";
       /* turn the page when the voice reaches the next one (a little ahead, as the turn takes a moment) */
       var target = plan[0]; plan.forEach(function (p) { if (t >= p.t - .6) target = p; });
@@ -755,11 +766,12 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       }
       raf = requestAnimationFrame(frame);
     }
+    a._frame = frame;
     a.onended = function () { if (a === audio) stopReading(); };
     a.onerror = function () { if (a === audio) stopReading(); };
   }
   function readNow() {
-    var tok = ++readTok; TTS.cancel(); clearHl();
+    var tok = ++readTok; TTS.cancel(); clearHl(); if (paused) { paused = false; syncBtn(); }
     var idxs = visiblePageIdx().filter(function (i) { return pages[i]; }), stop = false, list = [];
     idxs.forEach(function (i) { if (sealedPage(pages[i])) stop = true; else list = list.concat(items(i)); });
     var parts = []; list.forEach(function (it) { parts = parts.concat(pieces(it)); });
@@ -781,11 +793,12 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     });
   }
   $("#listen").onclick = function () {
-    if (reading) { stopReading(); return; }
+    if (reading) { if (paused) resumeReading(); else pauseReading(); return; }
     var n = currentEp();
     if (chapterAudio(n)) { setReading(true); playAudio(n); return; }
     if (!TTS) return; setReading(true); readNow();
   };
+  $("#stopBtn").onclick = stopReading;
   addEventListener("pagehide", function () { if (TTS) TTS.cancel(); });
 
   /* ---------- countdowns, resize, input ---------- */
