@@ -175,17 +175,14 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 #readbar[hidden]{display:none}
 #readbar button{appearance:none;background:rgba(31,58,46,.7);color:var(--cream);border:1.5px solid rgba(244,239,230,.55);height:36px;padding:0 12px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px}
 #readbar button:hover{background:rgba(244,239,230,.16)}#listen.on{background:var(--wine)!important;border-color:var(--wine)!important}
-#vp{position:fixed;top:56px;right:12px;z-index:7;width:min(300px,calc(100vw - 24px));background:var(--paper);color:var(--ink);border-radius:4px;padding:14px;box-shadow:0 16px 40px rgba(0,0,0,.5);font-size:12px;letter-spacing:.04em;display:flex;flex-direction:column;gap:12px}
+#vp{position:fixed;top:56px;right:12px;z-index:7;width:min(260px,calc(100vw - 24px));background:var(--paper);color:var(--ink);border-radius:4px;padding:14px;box-shadow:0 16px 40px rgba(0,0,0,.5);font-size:12px}
 #vp[hidden]{display:none}
-#vp label{display:flex;flex-direction:column;gap:6px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
-#vp label.chk{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:.02em;font-size:12px;color:var(--ink);cursor:pointer}
-#vp label.chk input{accent-color:var(--wine);width:16px;height:16px;flex:none}
-#vp select{font:inherit;font-size:13px;padding:8px;border:1.5px solid var(--forest);background:#fff;color:var(--ink);border-radius:2px;width:100%;text-transform:none;letter-spacing:0}
+#vp label{display:flex;flex-direction:column;gap:8px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
 #vp input[type=range]{width:100%;accent-color:var(--wine)}
 #vp b{font-weight:400;color:var(--ink)}
-#vTest{appearance:none;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:10px;border:1.5px solid var(--forest);background:none;color:var(--forest);cursor:pointer;border-radius:2px}
-#vTest:hover{background:var(--paper-2)}
-#vNote{margin:0;color:var(--ink-muted);font-size:11px;line-height:1.4}
+::highlight(reading){background-color:rgba(214,162,74,.38)}
+::highlight(readword){background-color:rgba(139,30,45,.3)}
+.reading{background:rgba(214,162,74,.3);box-shadow:0 0 0 .35em rgba(214,162,74,.3);border-radius:2px}
 #listen[hidden]{display:none}#listen:hover{background:rgba(244,239,230,.16)}#listen.on{background:var(--wine);border-color:var(--wine)}
 .book.jumping .leaf{transition:none!important}
 .book.fadein .leaf{animation:lfade .45s ease-out}
@@ -236,8 +233,8 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   <div class="hint" id="hint"></div>
 </main>
 <div id="lb" hidden><button id="lbX" aria-label="Close">×</button><img id="lbImg" alt=""><div id="lbCap"></div></div>
-<div id="readbar" hidden><button id="voiceBtn" aria-label="Voice settings">Voice</button><button id="listen" aria-label="Read the pages aloud">▶ Listen</button></div>
-<div id="vp" hidden role="dialog" aria-label="Voice settings"><label>Voice<select id="vSel"></select></label><label class="chk"><input type="checkbox" id="vSanta"> Santa voice (deeper and slower, with a "Ho ho ho!") – optional</label><label class="chk"><input type="checkbox" id="vBells"> Sleigh bells</label><label>Speed <b id="vRateV"></b><input type="range" id="vRate" min="0.7" max="1.3" step="0.05"></label><button id="vTest" type="button">▶ Try this voice</button><p id="vNote"></p></div>
+<div id="readbar" hidden><button id="voiceBtn" aria-label="Reading speed">Speed</button><button id="listen" aria-label="Read the pages aloud">▶ Listen</button></div>
+<div id="vp" hidden role="dialog" aria-label="Reading speed"><label>Reading speed <b id="vRateV"></b><input type="range" id="vRate" min="0.7" max="1.5" step="0.05"></label></div>
 <div id="toc" hidden><div class="tb" id="tocBack"></div><div class="toc-panel" role="dialog" aria-modal="true" aria-label="Contents">
   <button class="toc-x" id="tocX" aria-label="Close">×</button><h2>Contents</h2><h3>Elf &amp; Order</h3><ol id="toc-list"></ol>
   <p class="toc-note">A new chapter opens every weekday at 07:00.</p></div></div>
@@ -263,7 +260,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 
   /* inline markup: **bold**, *italic*, then the magic words (first one of each per page) */
   var MAGIC = { rudolph: "🦌", reindeer: "🦌", santa: "🎅", cookies: "🍪", cookie: "🍪", peppernuts: "🍪", peppernut: "🍪", gingerbread: "🍪",
-    "candy canes": "🍬", "candy cane": "🍬", marshmallows: "🍡", marshmallow: "🍡", "whipped cream": "🍦", "hot chocolate": "☕", coffee: "☕", chimney: "🏠", garland: "🎄", elves: "🧝", elf: "🧝" };
+    "candy canes": "🍬", "candy cane": "🍬", marshmallows: "🍡", marshmallow: "🍡", "whipped cream": "🍦", "hot chocolate": "☕", coffee: "☕", chimney: "🏠", garland: "🎄", elves: "🧝‍♀️", elf: "🧝‍♀️" };
   var MRE = new RegExp("(<[^>]+>)|\\b(" + Object.keys(MAGIC).sort(function (a, b) { return b.length - a.length; }).join("|") + ")\\b", "gi");
   function inline(s, seen) {
     var h = esc(s).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\*([^*]+)\*/g, "<i>$1</i>");
@@ -308,7 +305,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       '<div class="small">Wrapped and sealed by the North Pole. No shaking.</div><div class="pn">' + no + '</div></div>';
     var base = "/book/img/ep" + epNo(ep);
     return '<div class="pg imgpg"><div class="polaroid"><div class="ph"><img src="' + base + '.jpg" data-base="' + base + '" data-no="' + ep.no + '" alt="' + esc(ep.title) + '" loading="lazy" decoding="async" onerror="__bookImg(this)"></div></div>' +
-      '<div class="cap"><div class="eyebrow">' + dateLabel(ep) + ' · EPISODE ' + epNo(ep) + '</div><h2 class="t">' + esc(ep.title) + '</h2><p class="tag">' + esc(ep.tagline) + '</p></div><div class="pn">' + no + '</div></div>';
+      '<div class="cap"><div class="eyebrow" data-b="e">' + dateLabel(ep) + ' · EPISODE ' + epNo(ep) + '</div><h2 class="t" data-b="t">' + esc(ep.title) + '</h2><p class="tag" data-b="g">' + esc(ep.tagline) + '</p></div><div class="pn">' + no + '</div></div>';
   }
 
   function reportHtml(ep) {
@@ -370,7 +367,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   }
   function textPageHtml(ep, blocks, i, n, no) {
     var seen = {}, h = runhead(ep, i, n);
-    blocks.forEach(function (b) { h += blockHtml(b, ep, seen); });
+    blocks.forEach(function (b, j) { h += blockHtml(b, ep, seen).replace(/^<(\w+)/, '<$1 data-b="' + j + '"'); });
     return '<div class="scroll story">' + h + '</div><div class="pn">' + no + "</div>";
   }
   function sealedText(ep, no) {
@@ -601,115 +598,112 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     else if (e.target.closest && e.target.closest("#lb")) closeLb();
   });
 
-  /* ---------- read aloud (the browser's own voices) ---------- */
+  /* ---------- read aloud (the browser's own voice), with the text marked as it is read ---------- */
   var TTS = window.speechSynthesis && window.SpeechSynthesisUtterance ? window.speechSynthesis : null;
-  var reading = false, turning = false, readTok = 0, voice = null;
-  var rate = 1.05, savedVoice = "", santa = false, bells = false;
-  try { var sv = JSON.parse(localStorage.getItem("book-voice-2") || "{}"); if (sv.rate) rate = sv.rate; if (sv.name) savedVoice = sv.name; if (sv.santa === true) santa = true; if (sv.bells === true) bells = true; } catch (e) {}
-  function saveVoice() { try { localStorage.setItem("book-voice-2", JSON.stringify({ rate: rate, name: voice ? voice.name : "", santa: santa, bells: bells })); } catch (e) {} }
-  function enVoices() { return TTS ? TTS.getVoices().filter(function (v) { return /^en/i.test(v.lang); }) : []; }
+  var reading = false, turning = false, readTok = 0, voice = null, rate = 1.05;
+  try { var sv = JSON.parse(localStorage.getItem("book-voice-2") || "{}"); if (sv.rate) rate = sv.rate; } catch (e) {}
   function pickVoice() {
     if (!TTS) return;
-    var vs = enVoices();
-    voice = vs.filter(function (v) { return v.name === savedVoice; })[0] ||
-      vs.filter(function (v) { return /Samantha|Daniel|Serena|Karen|Moira|Google UK English|Natural|Online/i.test(v.name); })[0] || vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); })[0] || vs[0] || null;
-    var sel = $("#vSel"); sel.innerHTML = "";
-    if (!vs.length) { sel.innerHTML = "<option>Default voice of this device</option>"; $("#vNote").textContent = "This device offers one standard voice. Other voices can be added in the device's settings (accessibility / speech)."; }
-    else { vs.forEach(function (v) { var o = document.createElement("option"); o.value = v.name; o.textContent = v.name + " · " + v.lang; if (voice && v.name === voice.name) o.selected = true; sel.appendChild(o); }); $("#vNote").textContent = "The voices come from your own device, so they differ between phones and computers."; }
-    $("#vRate").value = rate; $("#vRateV").textContent = "×" + rate.toFixed(2); $("#vSanta").checked = santa; $("#vBells").checked = bells;
+    var vs = TTS.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
+    voice = vs.filter(function (v) { return /Samantha|Daniel|Serena|Karen|Moira|Google UK English|Natural|Online/i.test(v.name); })[0] || vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); })[0] || vs[0] || null;
   }
-  function restartIfReading() { if (reading) readNow(); }
+  if (TTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
+  function showRate() { $("#vRate").value = rate; $("#vRateV").textContent = "×" + rate.toFixed(2); $("#voiceBtn").textContent = "Speed ×" + rate.toFixed(2); }
+  showRate();
   $("#voiceBtn").onclick = function (e) { e.stopPropagation(); $("#vp").hidden = !$("#vp").hidden; };
   $("#vp").addEventListener("click", function (e) { e.stopPropagation(); });
   document.addEventListener("click", function () { $("#vp").hidden = true; });
-  $("#vSel").onchange = function () { voice = enVoices().filter(function (v) { return v.name === $("#vSel").value; })[0] || voice; saveVoice(); restartIfReading(); };
-  $("#vRate").oninput = function () { rate = parseFloat($("#vRate").value); $("#vRateV").textContent = "×" + rate.toFixed(2); saveVoice(); };
-  $("#vRate").onchange = restartIfReading;
-  $("#vSanta").onchange = function () { santa = $("#vSanta").checked; saveVoice(); restartIfReading(); };
-  $("#vBells").onchange = function () { bells = $("#vBells").checked; saveVoice(); if (bells) jingle(); };
-  /* sleigh bells made with the browser's own sound engine, no sound files */
-  var AC = window.AudioContext || window.webkitAudioContext, ac = null;
-  function jingle() {
-    if (!bells || !AC) return;
-    try {
-      ac = ac || new AC(); if (ac.state === "suspended") ac.resume();
-      var t = ac.currentTime;
-      [0, .06, .13, .2, .29, .36].forEach(function (d, i) {
-        var f = [2637, 3136, 3520, 3951][i % 4];
-        [[f, "triangle", .09], [f * 2.76, "sine", .04]].forEach(function (pt) {
-          var o = ac.createOscillator(), g = ac.createGain(); o.type = pt[1]; o.frequency.value = pt[0];
-          g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(pt[2], t + d + .005); g.gain.exponentialRampToValueAtTime(.0001, t + d + .55);
-          o.connect(g); g.connect(ac.destination); o.start(t + d); o.stop(t + d + .6);
-        });
-      });
-    } catch (e) {}
-  }
-  function utter(text, extra) {
-    var u = new SpeechSynthesisUtterance(text); u.lang = voice ? voice.lang : "en-GB"; if (voice) u.voice = voice;
-    u.rate = santa ? rate * .9 : rate; u.pitch = santa ? .55 : 1;
-    if (extra) { if (extra.rate) u.rate = extra.rate; if (extra.pitch) u.pitch = extra.pitch; }
-    return u;
-  }
-  $("#vTest").onclick = function () {
-    if (!TTS) return; stopReading(); TTS.cancel();
-    jingle(); TTS.speak(utter((santa ? "Ho, ho, ho! " : "") + "Johanne adjusted her elf hat. Listen carefully. I survived last Christmas."));
-  };
-  if (TTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
+  $("#vRate").oninput = function () { rate = parseFloat($("#vRate").value); showRate(); try { localStorage.setItem("book-voice-2", JSON.stringify({ rate: rate })); } catch (e) {} };
+  $("#vRate").onchange = function () { if (reading) readNow(); };
+
   function say(t) { t = String(t); if (!/[a-z]/.test(t)) t = t.toLowerCase(); return t.replace(/\*/g, "").replace(/\s*\+\s*/g, " plus ").replace(/(\d)%/g, "$1 percent").replace(/\s+/g, " ").trim(); }
   function sealedPage(p) { return p && p.ep && !p.ep.unlocked && p.kind !== "filler"; }
-  function speech(p) {
-    var out = [];
+  /* what to say for a page: items of text, each tied to a block of the page (key) so it can be marked */
+  function items(idx) {
+    var p = pages[idx], out = [];
+    function add(key, text) { out.push({ idx: idx, key: key, text: text }); }
     if (!p || sealedPage(p) || p.kind === "filler") return out;
-    if (p.n === 0) return [data.meta.title + ".", data.meta.tagline];
-    if (p.kind === "outro") { var last = data.episodes[12]; return last && last.unlocked ? last.outro.map(say) : out; }
-    if (p.kind === "img") return ["Episode " + p.ep.no + ". " + say(p.ep.title), p.ep.tagline];
+    if (p.n === 0) { add(null, data.meta.title + "."); add(null, data.meta.tagline); return out; }
+    if (p.kind === "outro") { var last = data.episodes[12]; if (last && last.unlocked) last.outro.forEach(function (l) { add(null, say(l)); }); return out; }
+    if (p.kind === "img") { add("e", "Episode " + p.ep.no + "."); add("t", say(p.ep.title)); add("g", p.ep.tagline); return out; }
     if (p.kind !== "text") return out;
-    p.blocks.forEach(function (b) {
+    p.blocks.forEach(function (b, j) {
+      var k = String(j);
       if (b.t === "tail") {
-        var ep = p.ep; out.push(ep.reportTitle.toLowerCase() + ".");
-        Object.keys(ep.report).forEach(function (k) { out.push(k + ": " + say(ep.report[k]) + "."); });
-        var next = data.episodes[ep.no]; if (next) out.push("Next episode: " + dateLong(next) + ".");
-      } else if (b.t === "card" && /MESSAGE FROM SANTA|– SANTA/.test(b.x)) out.push("A text message from Santa: " + say(b.x.replace(/^MESSAGE FROM SANTA:\s*/, "").replace(/\s*–\s*SANTA$/, "")));
-      else if (b.t === "card" && /^MEETING DECLINED/.test(b.x)) out.push("Outlook: meeting declined. " + say(b.x.replace(/^MEETING DECLINED\.\s*/, "")));
-      else out.push(say(b.x));
+        var ep = p.ep; add(k, ep.reportTitle.toLowerCase() + ".");
+        Object.keys(ep.report).forEach(function (r) { add(k, r + ": " + say(ep.report[r]) + "."); });
+        var next = data.episodes[ep.no]; if (next) add(k, "Next episode: " + dateLong(next) + ".");
+      } else if (b.t === "card" && /MESSAGE FROM SANTA|– SANTA/.test(b.x)) add(k, "A text message from Santa: " + say(b.x.replace(/^MESSAGE FROM SANTA:\s*/, "").replace(/\s*–\s*SANTA$/, "")));
+      else if (b.t === "card" && /^MEETING DECLINED/.test(b.x)) add(k, "Outlook: meeting declined. " + say(b.x.replace(/^MEETING DECLINED\.\s*/, "")));
+      else add(k, say(b.x));
     });
     return out;
   }
-  function chunks(list) {
-    var res = [];
-    list.forEach(function (t) {
-      var parts = t.match(/[^.!?]+[.!?]*["')]*\s*/g) || [t], cur = "";
-      parts.forEach(function (s2) { if ((cur + s2).length > 200 && cur) { res.push(cur); cur = ""; } cur += s2; });
-      if (cur.trim()) res.push(cur);
+  /* cut an item into pieces of whole sentences (long pieces make some browsers stop) and remember where each piece starts */
+  function pieces(item) {
+    var res = [], re = /[^.!?]+[.!?]*["')]*\s*/g, m, parts = [], cur = "", start = 0;
+    while ((m = re.exec(item.text))) parts.push({ s: m[0], i: m.index });
+    if (!parts.length) parts = [{ s: item.text, i: 0 }];
+    parts.forEach(function (pt) {
+      if (cur && (cur + pt.s).length > 200) { res.push({ text: cur, item: item, start: start }); cur = ""; }
+      if (!cur) start = pt.i; cur += pt.s;
     });
-    return res.filter(function (c) { return /\w/.test(c); });
+    if (cur.trim()) res.push({ text: cur, item: item, start: start });
+    return res.filter(function (c) { return /\w/.test(c.text); });
   }
+
+  /* marking: the sentence gets a soft yellow, the word being said a stronger mark (where the browser reports words) */
+  var HL = !!(window.CSS && CSS.highlights && window.Highlight), hlSent, hlWord, hlEl = null;
+  if (HL) { hlSent = new Highlight(); hlWord = new Highlight(); CSS.highlights.set("reading", hlSent); CSS.highlights.set("readword", hlWord); }
+  function elFor(item) { return item.key == null ? null : document.querySelector('.face[data-p="' + item.idx + '"] [data-b="' + item.key + '"]'); }
+  function clearHl() { if (HL) { hlSent.clear(); hlWord.clear(); } if (hlEl) { hlEl.classList.remove("reading"); hlEl = null; } }
+  function textRange(el, s, e) {
+    var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), n, pos = 0, r = document.createRange(), started = false;
+    while ((n = w.nextNode())) {
+      var len = n.nodeValue.length;
+      if (!started && s < pos + len) { r.setStart(n, s - pos); started = true; }
+      if (started && e <= pos + len) { r.setEnd(n, e - pos); return r; }
+      pos += len;
+    }
+    return null;
+  }
+  function markPiece(c) {
+    clearHl(); var el = elFor(c.item); if (!el) return;
+    if (HL && el.textContent === c.item.text) { var r = textRange(el, c.start, c.start + c.text.replace(/\s+$/, "").length); if (r) { hlSent.add(r); return; } }
+    el.classList.add("reading"); hlEl = el;
+  }
+  function markWord(c, ci) {
+    if (!HL) return; var el = elFor(c.item); if (!el || el.textContent !== c.item.text) return;
+    var re = /\S+/g; re.lastIndex = c.start + ci; var m = re.exec(c.item.text); if (!m) return;
+    var len = m[0].replace(/[.,!?;:"')]+$/, "").length || m[0].length, r = textRange(el, m.index, m.index + len);
+    hlWord.clear(); if (r) hlWord.add(r);
+  }
+
   function setReading(on) { reading = on; var b = $("#listen"); b.classList.toggle("on", on); b.textContent = on ? "■ Stop" : "▶ Listen"; }
-  function stopReading() { readTok++; if (reading && TTS) TTS.cancel(); if (reading) setReading(false); }
-  function readNow(intro) {
-    var tok = ++readTok; TTS.cancel();
-    if (intro) { var iu = utter(intro, { rate: .75, pitch: .45 }); TTS.speak(iu); }
+  function stopReading() { readTok++; if (reading && TTS) TTS.cancel(); if (reading) setReading(false); clearHl(); }
+  function readNow() {
+    var tok = ++readTok; TTS.cancel(); clearHl();
     var idxs = visiblePageIdx().filter(function (i) { return pages[i]; }), stop = false, list = [];
-    idxs.forEach(function (i) { if (sealedPage(pages[i])) stop = true; else list = list.concat(speech(pages[i])); });
-    var parts = chunks(list);
+    idxs.forEach(function (i) { if (sealedPage(pages[i])) stop = true; else list = list.concat(items(i)); });
+    var parts = []; list.forEach(function (it) { parts = parts.concat(pieces(it)); });
     function after() {
       if (tok !== readTok || !reading) return;
+      clearHl();
       if (stop || pos >= maxPos()) { stopReading(); return; }
-      jingle(); turning = true; goTo(pos + 1); turning = false;
+      turning = true; goTo(pos + 1); turning = false;
       setTimeout(function () { if (reading && tok === readTok) readNow(); }, 1300);
     }
     if (!parts.length) { after(); return; }
     parts.forEach(function (c, j) {
-      var u = utter(c);
+      var u = new SpeechSynthesisUtterance(c.text); u.rate = rate; u.lang = voice ? voice.lang : "en-GB"; if (voice) u.voice = voice;
+      u.onstart = function () { if (tok === readTok) markPiece(c); };
+      u.onboundary = function (ev) { if (tok === readTok && ev.name === "word") markWord(c, ev.charIndex); };
       if (j === parts.length - 1) u.onend = after;
       u.onerror = function (ev) { if (tok === readTok && ev.error !== "interrupted" && ev.error !== "canceled") stopReading(); };
       TTS.speak(u);
     });
   }
-  $("#listen").onclick = function () {
-    if (reading) { stopReading(); return; } if (!TTS) return;
-    setReading(true); jingle(); readNow(santa ? "Ho, ho, ho!" : "");
-  };
+  $("#listen").onclick = function () { if (reading) { stopReading(); return; } if (!TTS) return; setReading(true); readNow(); };
   addEventListener("pagehide", function () { if (TTS) TTS.cancel(); });
 
   /* ---------- countdowns, resize, input ---------- */
