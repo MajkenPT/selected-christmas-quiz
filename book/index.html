@@ -383,7 +383,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     var last = data.episodes[12];
     if (!last || !last.unlocked) return '<div class="pg sealed"><div class="eyebrow">The last page</div>' + GIFT + '<div class="small">Some endings are worth waiting for.</div><div class="pn">' + no + '</div></div>';
     return '<div class="pg sealed"><img src="/assets/selected-logo-hat-black.svg" alt="Selected" style="width:55%">' +
-      '<div class="outro">' + last.outro.map(function (l) { return "<div>" + esc(l.replace(/\*/g, "")) + "</div>"; }).join("") + '</div><div class="pn">' + no + '</div></div>';
+      '<div class="outro">' + last.outro.map(function (l, k) { return '<div data-b="o' + k + '">' + esc(l.replace(/\*/g, "")) + "</div>"; }).join("") + '</div><div class="pn">' + no + '</div></div>';
   }
 
   function buildPages() {
@@ -723,6 +723,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     function at(g) { for (var i = 0; i < pages.length; i++) { var p = pages[i]; if (p.n === n && p.kind === "text" && g >= p.from && g < p.from + p.blocks.length) return { idx: i, j: g - p.from }; } return null; }
     map.b.forEach(function (m, g) { var l = at(g); if (l) out.push({ key: String(l.j), idx: l.idx, t0: m.s, t1: m.e, w: m.w }); });
     var tl = at(map.b.length); if (tl) out.push({ key: String(tl.j), idx: tl.idx, t0: map.tail[0], t1: map.tail[1] });
+    if (map.o) pages.forEach(function (p, i) { if (p.kind === "outro") map.o.forEach(function (o, k) { out.push({ key: "o" + k, idx: i, t0: o.s, t1: o.e }); }); });
     return out;
   }
   function playAudio(n) {
