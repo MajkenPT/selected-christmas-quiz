@@ -175,6 +175,9 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 #readbar{position:fixed;top:12px;right:12px;z-index:6;display:flex;gap:8px}
 #readbar[hidden],#readbar button[hidden]{display:none}
 #readbar button{appearance:none;background:rgba(31,58,46,.7);color:var(--cream);border:1.5px solid rgba(244,239,230,.55);height:36px;padding:0 12px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px}
+#listen.attn{animation:lpulse 1.5s ease-in-out 4}
+@keyframes lpulse{0%,100%{box-shadow:0 0 0 0 rgba(244,239,230,0);background:rgba(31,58,46,.7)}50%{box-shadow:0 0 0 8px rgba(244,239,230,.3);background:rgba(244,239,230,.25)}}
+@media (prefers-reduced-motion:reduce){#listen.attn{animation:none;box-shadow:0 0 0 3px rgba(244,239,230,.5)}}
 #readbar button:hover{background:rgba(244,239,230,.16)}#listen.on{background:var(--wine)!important;border-color:var(--wine)!important}
 #vp{position:fixed;top:56px;right:12px;z-index:7;width:min(260px,calc(100vw - 24px));background:var(--paper);color:var(--ink);border-radius:4px;padding:14px;box-shadow:0 16px 40px rgba(0,0,0,.5);font-size:12px}
 #vp[hidden]{display:none}
@@ -514,7 +517,8 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     Array.prototype.forEach.call($("#dots").children, function (b, i) { b.classList.toggle("cur", i + 1 === cur); });
     $("#lbl").textContent = cur === 0 ? "Cover" : cur === 14 ? "The end" : "Ep " + cur + " / 13";
     $("#homeBtn").disabled = pos === 0; if (typeof showRate === "function" && data) showRate();
-    $("#readbar").hidden = !(opened && data && chapterAudio(cur));
+    var rb = $("#readbar"), wasHidden = rb.hidden; rb.hidden = !(opened && data && chapterAudio(cur));
+    if (wasHidden && !rb.hidden) nudgeListen();
     if (opened && cur >= 1 && cur <= 13) rememberSeen(cur);
     Array.prototype.forEach.call($("#toc-list").children, function (li, i) { li.classList.toggle("cur", i + 1 === cur); });
   }
@@ -522,6 +526,12 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   function rememberSeen(n) {
     if (/[?&]date=/.test(location.search) || !data.episodes[n - 1].unlocked) return; /* a previewed day or a sealed chapter is not a visit */
     try { var s0 = parseInt(localStorage.getItem("book-seen"), 10) || 0; if (n > s0) localStorage.setItem("book-seen", String(n)); } catch (e) {}
+  }
+  /* make the Listen button pulse a few times when it first shows, until the reader has used it */
+  function nudgeListen() {
+    try { if (localStorage.getItem("book-listened")) return; } catch (e) {}
+    var b = $("#listen"); b.classList.remove("attn"); void b.offsetWidth; b.classList.add("attn");
+    setTimeout(function () { b.classList.remove("attn"); }, 7000);
   }
   function openToc() { $("#toc").hidden = false; var c = $("#toc-list .cur button") || $("#toc-list button"); if (c) c.focus({ preventScroll: true }); $("#toc-list").scrollTop = 0; }
   function closeToc() { $("#toc").hidden = true; }
@@ -607,7 +617,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   });
 
   /* ---------- recorded narration, with the text marked as it is read ---------- */
-  var reading = false, paused = false, turning = false, arate = 1, audio = null;
+  var reading = false, paused = false, turning = false, arate = 1, audio = null, shared = null, playTok = 0;
   try { var sv = JSON.parse(localStorage.getItem("book-speed") || "{}"); if (sv.rate) arate = sv.rate; } catch (e) {}
   function showRate() { $("#vRate").value = arate; $("#vRateV").textContent = "×" + arate.toFixed(2); $("#voiceBtn").textContent = "Speed ×" + arate.toFixed(2); }
   showRate();
@@ -639,13 +649,14 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     b.textContent = !reading ? "▶ Listen" : paused ? "▶ Resume" : "❚❚ Pause"; $("#stopBtn").hidden = !reading;
   }
   function setReading(on) { reading = on; paused = false; syncBtn(); }
-  function pauseReading() { if (!reading || paused) return; paused = true; if (audio) audio.pause(); syncBtn(); }
+  function pauseReading() { if (!reading || paused) return; if (!audio) { stopReading(); return; } paused = true; if (audio) audio.pause(); syncBtn(); }
   function resumeReading() {
     if (!reading || !paused) return; paused = false;
     if (audio) { var a = audio; a.play().then(function () { if (a === audio && a._frame) requestAnimationFrame(a._frame); }).catch(stopReading); }
     syncBtn();
   }
   function stopReading() {
+    playTok++;
     if (audio) { audio.pause(); audio.onended = audio.ontimeupdate = null; audio = null; $("#aprog").style.width = "0"; }
     if (reading) setReading(false); clearHl();
   }
@@ -665,10 +676,12 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     return out;
   }
   function playAudio(n) {
-    var ep = data.episodes[n - 1], a = audio = new Audio(ep.audio); a.preload = "auto"; a.playbackRate = arate;
+    /* one audio element is reused, so a phone that allowed the first play also allows the next chapter to start by itself */
+    var ep = data.episodes[n - 1], a = audio = (shared = shared || new Audio()), tok = ++playTok;
+    a.pause(); a.src = ep.audio; a.preload = "auto"; a.playbackRate = arate;
     var plan = null, segs = null, cur = null, raf = 0;
-    a.addEventListener("loadedmetadata", function () {
-      if (a !== audio) return;
+    a.onloadedmetadata = function () {
+      if (tok !== playTok) return;
       if (!ep.audioMap) { stopReading(); return; }
       {
         segs = audioSegs(n, ep.audioMap);
@@ -678,9 +691,9 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       var vis = visiblePageIdx(), start = null;
       plan.forEach(function (p, k) { if (vis.indexOf(p.idx) !== -1 && start === null) start = k === 0 ? 0 : p.t; });
       a.currentTime = start || 0; a.play().then(function () { raf = requestAnimationFrame(frame); }).catch(function () { stopReading(); });
-    });
+    };
     function frame() {
-      if (a !== audio || a.paused) return;
+      if (tok !== playTok || a.paused) return;
       var t = a.currentTime; $("#aprog").style.width = (t / a.duration * 100) + "%";
       /* turn the page when the voice reaches the next one (a little ahead, as the turn takes a moment) */
       var target = plan[0]; plan.forEach(function (p) { if (t >= p.t - .6) target = p; });
@@ -707,12 +720,21 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       raf = requestAnimationFrame(frame);
     }
     a._frame = frame;
-    a.onended = function () { if (a === audio) stopReading(); };
-    a.onerror = function () { if (a === audio) stopReading(); };
+    /* when the chapter ends and the next one is open, turn to it and go on, so the reader does not have to press again */
+    a.onended = function () {
+      if (tok !== playTok) return;
+      var nx = n < 13 && chapterAudio(n + 1) ? n + 1 : 0;
+      if (!nx) { stopReading(); return; }
+      clearHl(); $("#aprog").style.width = "0"; audio = null; var mine = ++playTok;
+      turning = true; goTo(posForEp(nx)); turning = false;
+      setTimeout(function () { if (reading && !paused && mine === playTok) playAudio(nx); }, 1300);
+    };
+    a.onerror = function () { if (tok === playTok) stopReading(); };
   }
   $("#listen").onclick = function () {
     if (reading) { if (paused) resumeReading(); else pauseReading(); return; }
-    var n = currentEp(); if (chapterAudio(n)) { setReading(true); playAudio(n); }
+    var n = currentEp();
+    if (chapterAudio(n)) { setReading(true); playAudio(n); $("#listen").classList.remove("attn"); try { localStorage.setItem("book-listened", "1"); } catch (e) {} }
   };
   $("#stopBtn").onclick = stopReading;
 
