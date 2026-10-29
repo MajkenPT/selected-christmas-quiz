@@ -12,7 +12,7 @@
   --wine:#8B1E2D;--wine-hi:#A53040;--forest:#1F3A2E;--cream:#F4EFE6;--knit:#284838;--knit-hi:#3B5E4F;
   --font-mono:"Suisse Intl Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --ratio:1.4;
-  --pw:min(calc((100vw - 130px) / 2),calc((100dvh - 170px) / var(--ratio)),540px);
+  --pw:min(calc((100vw - 130px) / 2),calc((100dvh - 190px) / var(--ratio)),540px);
   --ph:calc(var(--pw) * var(--ratio));
   --fs:clamp(13px,calc(var(--pw) * .032),16.5px);
   --flip:1.15s;
@@ -67,6 +67,8 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 .polaroid::before,.polaroid::after{content:"";position:absolute;top:-9px;width:64px;height:18px;background:rgba(222,212,191,.8);transform:rotate(-6deg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .polaroid::before{left:8%}.polaroid::after{right:8%;transform:rotate(5deg)}
 .polaroid .ph{aspect-ratio:1/1;background:var(--knit);overflow:hidden}
+.polaroid .ph{position:relative;cursor:zoom-in}
+.polaroid .ph::after{content:"⤢";position:absolute;right:8px;bottom:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;display:grid;place-items:center;font-size:15px;pointer-events:none}
 .polaroid img,.polaroid svg{width:100%;height:100%;object-fit:cover;display:block}
 .imgpg .cap{margin-top:calc(var(--pw) * .06)}
 .imgpg.show .polaroid{animation:pop .9s cubic-bezier(.2,.8,.2,1) both}
@@ -83,7 +85,8 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 .story .card{margin:1.1em 0;padding:.75em .95em;border:1.5px solid var(--forest);border-radius:2px;background:#fff;text-transform:uppercase;letter-spacing:.02em;font-size:.88em;position:relative;opacity:0;transform:translateY(8px) rotate(-.6deg);transition:.7s .25s}
 .story .card::before{content:"✦";color:var(--wine);margin-right:.5em}
 .show .story .card{opacity:1;transform:none}
-.story .note,.story p.letter{font-style:italic}
+.story .note,.story p.letter,.story .card.hw{font-style:italic}
+.story .card.hw{border-style:dashed;background:var(--paper-2)}
 .story p.letter{margin-left:.6em;padding-left:.8em;border-left:1.5px solid #cfc6af}
 .story .sms{margin:1.3em 0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;font-size:.95em;line-height:1.3;background:#fff;border:1px solid #e3ddcc;border-radius:18px;padding:.7em .8em .8em;box-shadow:0 6px 16px rgba(0,0,0,.08);-webkit-font-smoothing:antialiased}
 .sms .sh{display:flex;flex-direction:column;align-items:center;gap:.15em;margin-bottom:.6em;color:#8a8a8e;font-size:.72em}
@@ -110,7 +113,6 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 .mw::after{content:"✦";position:absolute;right:-.7em;top:-.55em;font-size:.6em;color:var(--wine);animation:tw 2.2s ease-in-out infinite}
 .mw.used{border-bottom-color:transparent}.mw.used::after{display:none}
 @keyframes tw{50%{opacity:.15;transform:scale(.6)}}
-.tbc{margin:1.4em 0 .6em;text-align:center;font-size:.8em;letter-spacing:.3em;color:var(--ink-muted)}
 
 /* report */
 .report{margin:1.2em 0 .4em;border:1.5px solid var(--forest);padding:.9em 1em 1em;position:relative;background:var(--paper-2)}
@@ -149,6 +151,8 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 .cover h1 span{display:block;font-size:.55em;letter-spacing:.3em;margin:.2em 0}
 .cover .tg{font-size:.95em;opacity:.92}
 .cover .bl{font-size:.8em;opacity:.8;max-width:25em;line-height:1.5}
+.cover .tap{margin-top:.6em;font-size:.82em;letter-spacing:.24em;animation:tapp 2.4s ease-in-out infinite}
+@keyframes tapp{50%{opacity:.45}}
 .cover .open{margin-top:.6em;font-size:.82em;letter-spacing:.22em;padding:.8em 1.4em;border:1.5px solid var(--cream);animation:pulse 2.4s ease-in-out infinite;cursor:pointer;background:transparent;color:inherit;font-family:inherit}
 @keyframes pulse{50%{background:rgba(244,239,230,.16);transform:scale(1.03)}}
 .cover .sp{position:absolute;color:#f6d9a0;animation:tw 3s ease-in-out infinite;pointer-events:none;z-index:2}
@@ -161,6 +165,17 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 .nav button.txt{width:auto;padding:0 12px;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
 .nav .lbl{display:none;font-size:11px;letter-spacing:.06em;min-width:4.6em;text-align:center;opacity:.85;white-space:nowrap}
 @media (max-width:800px){.nav .dots{display:none}.nav .lbl{display:block}.nav{gap:7px}.nav button.txt{padding:0 9px;font-size:10px;letter-spacing:.08em}.nav button{width:38px}.nav button.txt{width:auto}}
+#lb{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:14px;background:rgba(8,18,14,.92);cursor:zoom-out}
+#lb[hidden]{display:none}
+#lb img{max-width:min(96vw,1100px);max-height:82dvh;object-fit:contain;border-radius:3px;box-shadow:0 20px 60px rgba(0,0,0,.6);animation:lbin .35s cubic-bezier(.2,.9,.3,1) both}
+@keyframes lbin{from{opacity:0;transform:scale(.82)}}
+#lbCap{color:var(--cream);font-size:12px;letter-spacing:.14em;text-transform:uppercase;text-align:center}
+#lbX{position:absolute;right:10px;top:8px;width:40px;height:40px;background:none;border:0;color:var(--cream);font:inherit;font-size:28px;cursor:pointer}
+#listen{position:fixed;top:12px;right:12px;z-index:6;appearance:none;background:rgba(31,58,46,.7);color:var(--cream);border:1.5px solid rgba(244,239,230,.55);height:36px;padding:0 12px;font:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px}
+#listen[hidden]{display:none}#listen:hover{background:rgba(244,239,230,.16)}#listen.on{background:var(--wine);border-color:var(--wine)}
+.book.jumping .leaf{transition:none!important}
+.book.fadein .leaf{animation:lfade .45s ease-out}
+@keyframes lfade{from{opacity:0}}
 #toc{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:16px}
 #toc[hidden]{display:none}
 #toc .tb{position:absolute;inset:0;background:rgba(10,24,18,.72)}
@@ -204,8 +219,10 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     <button id="next" aria-label="Next page">→</button>
     <button id="homeBtn" class="txt" aria-label="Back to the cover">Cover</button>
   </div>
-  <div class="hint" id="hint" hidden></div>
+  <div class="hint" id="hint"></div>
 </main>
+<div id="lb" hidden><button id="lbX" aria-label="Close">×</button><img id="lbImg" alt=""><div id="lbCap"></div></div>
+<button id="listen" hidden aria-label="Read the pages aloud">▶ Listen</button>
 <div id="toc" hidden><div class="tb" id="tocBack"></div><div class="toc-panel" role="dialog" aria-modal="true" aria-label="Contents">
   <button class="toc-x" id="tocX" aria-label="Close">×</button><h2>Contents</h2><h3>Elf &amp; Order</h3><ol id="toc-list"></ol>
   <p class="toc-note">A new chapter opens every weekday at 07:00.</p></div></div>
@@ -268,7 +285,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     var first = data.episodes[0], soon = first.unlocked ? "" : '<div class="soon">Chapter 1 opens ' + dateLong(first).toUpperCase() + ' · 07:00</div>';
     return '<div class="frame"></div>' + sp + '<div class="pg"><img class="logo" src="/assets/selected-logo-hat-white.svg" alt="Selected">' +
       '<div><div class="pres">' + esc(data.meta.presents) + '</div><h1><span>✦</span>ELF<br>&amp; ORDER<span>✦</span></h1><div class="tg">' + esc(data.meta.tagline) + '</div></div>' +
-      '<div class="bl">' + esc(data.meta.blurb) + '</div><button class="open" id="openBtn">OPEN THE BOOK</button>' + soon + '</div>';
+      '<div class="bl">' + esc(data.meta.blurb) + '</div><div class="tap">TAP TO OPEN</div>' + soon + '</div>';
   }
 
   function imgPage(ep, no) {
@@ -311,11 +328,11 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       if (/MESSAGE FROM SANTA|– SANTA/.test(b.x)) return '<div class="sms"><div class="sh"><div class="av">🎅</div><b>Santa</b><span>Text message · now</span></div><div class="stage2"><div class="typing"><i></i><i></i><i></i></div><div class="bub">' +
         esc(b.x.replace(/^MESSAGE FROM SANTA:\s*/, "").replace(/\s*–\s*SANTA$/, "")) + '</div></div><div class="dl">Delivered</div></div>';
       if (/^MEETING DECLINED/.test(b.x)) return '<div class="notif"><div class="ico">📅</div><div><div class="who">Outlook · Meeting declined</div><div class="msg">' + esc(b.x.replace(/^MEETING DECLINED\.\s*/, "")) + '</div></div></div>';
-      return '<div class="card">' + esc(b.x) + "</div>";
+      return '<div class="card' + (b.l || b.h ? " hw" : "") + '">' + esc(b.x) + "</div>";
     }
     /* tail: the report, kept together with "to be continued" */
     var next = data.episodes[ep.no];
-    return "<div>" + (ep.no < 13 ? '<div class="tbc">TO BE CONTINUED…</div>' : "") + reportHtml(ep) +
+    return "<div>" + reportHtml(ep) +
       (next ? '<p class="tag" style="text-align:center;margin-top:1.4em">Next episode: ' + dateLong(next) + "</p>" : "") + "</div>";
   }
   function runhead(ep, i, n) {
@@ -416,7 +433,24 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     shift(); updateNav(); windowLeaves(); settle(1150);
   }
 
+  /* jump straight to a page without turning the pages in between */
+  function jump(target) {
+    timers.forEach(clearTimeout); timers = [];
+    target = Math.max(0, Math.min(maxPos(), target));
+    var bk = $("#book"), reach = mobile ? 2 : 4;
+    bk.classList.add("jumping"); bk.classList.remove("fadein");
+    pos = target;
+    leaves.forEach(function (lf, i) {
+      lf.classList.toggle("flipped", i < pos); lf.classList.remove("turning"); lf.style.zIndex = i < pos ? i + 1 : L - i;
+      clearTimeout(lf._h); lf._h = 0; lf.style.display = Math.abs(i - pos) <= reach ? "" : "none";
+    });
+    shift(); updateNav(); settle(60);
+    void bk.offsetWidth; bk.classList.add("fadein");
+    requestAnimationFrame(function () { requestAnimationFrame(function () { bk.classList.remove("jumping"); }); });
+  }
+  function nav(target, gap) { if (Math.abs(target - pos) > 3) { stopReading(); jump(target); } else goTo(target, gap); }
   function goTo(target, gap) {
+    if (!turning) stopReading();
     timers.forEach(clearTimeout); timers = [];
     target = Math.max(0, Math.min(maxPos(), target));
     var d = target - pos, dir = d > 0 ? 1 : -1;
@@ -459,7 +493,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   }
   function latest() { var n = 0; data.episodes.forEach(function (e) { if (e.unlocked) n = e.no; }); return n; }
 
-  function hintText() { $("#hint").textContent = mobile ? "Swipe or tap the arrows to turn the page · Some words are magic ✦" : "Tap the arrows or use ← → · Some words are magic ✦"; }
+  function hintText() { $("#hint").textContent = !opened ? (mobile ? "Tap or swipe the cover to open the book" : "Tap the cover to open the book") : mobile ? "Swipe or tap the arrows to turn the page · Some words are magic ✦" : "Tap the arrows or use ← → · Some words are magic ✦"; }
   function updateNav() {
     $("#prev").disabled = pos === 0; $("#next").disabled = pos === maxPos();
     var cur = currentEp();
@@ -478,13 +512,13 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       var li = document.createElement("li"), b = document.createElement("button");
       b.innerHTML = '<span class="no">' + epNo(ep) + '</span><span class="tt">' + (ep.unlocked ? esc(ep.title) : "Sealed · opens " + shortDate(ep)) + '</span><span class="dt">' + (ep.unlocked ? shortDate(ep) : "✦") + "</span>";
       b.disabled = !ep.unlocked;
-      b.onclick = function () { closeToc(); goTo(posForEp(ep.no), 70); };
+      b.onclick = function () { closeToc(); nav(posForEp(ep.no), 120); };
       li.appendChild(b); tl.appendChild(li);
     });
     data.episodes.forEach(function (ep) {
       var b = document.createElement("button"); b.className = ep.unlocked ? "ok" : "lock";
       b.title = "Episode " + epNo(ep) + " · " + dateLabel(ep); b.textContent = ep.no;
-      b.onclick = function () { if (!opened) return; goTo(posForEp(ep.no), 120); };
+      b.onclick = function () { if (!opened) return; nav(posForEp(ep.no), 120); };
       d.appendChild(b);
     });
   }
@@ -536,13 +570,83 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   /* ---------- opening ---------- */
   function openBook() {
     if (opened) return; opened = true;
-    $("#nav").hidden = false; $("#hint").hidden = false;
+    $("#nav").hidden = false; hintText(); if (TTS) $("#listen").hidden = false;
     var r = $("#book").getBoundingClientRect(), cx = mobile ? r.left : r.left + r.width / 2;
     burst(cx + 20, r.top + r.height / 2, ["✦", "❄", "✦", "✨"], 26);
     var target = latest(); target = target ? posForEp(target) : (mobile ? 1 : 1);
     goTo(target, target > 12 ? 90 : target > 3 ? 200 : 140);
     try { sessionStorage.setItem("book-opened", "1"); } catch (e) {}
   }
+
+  /* ---------- picture pop-out ---------- */
+  function closeLb() { $("#lb").hidden = true; }
+  document.addEventListener("click", function (e) {
+    var im = e.target.closest && e.target.closest(".polaroid img");
+    if (im && opened) { $("#lbImg").src = im.currentSrc || im.src; $("#lbImg").alt = im.alt; $("#lbCap").textContent = im.alt; $("#lb").hidden = false; }
+    else if (e.target.closest && e.target.closest("#lb")) closeLb();
+  });
+
+  /* ---------- read aloud (the browser's own voices) ---------- */
+  var TTS = window.speechSynthesis && window.SpeechSynthesisUtterance ? window.speechSynthesis : null;
+  var reading = false, turning = false, readTok = 0, voice = null;
+  function pickVoice() {
+    if (!TTS) return;
+    var vs = TTS.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
+    voice = vs.filter(function (v) { return /Samantha|Daniel|Serena|Karen|Moira|Google UK English|Natural|Online/i.test(v.name); })[0] || vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); })[0] || vs[0] || null;
+  }
+  if (TTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
+  function say(t) { t = String(t); if (!/[a-z]/.test(t)) t = t.toLowerCase(); return t.replace(/\*/g, "").replace(/\s*\+\s*/g, " plus ").replace(/(\d)%/g, "$1 percent").replace(/\s+/g, " ").trim(); }
+  function sealedPage(p) { return p && p.ep && !p.ep.unlocked && p.kind !== "filler"; }
+  function speech(p) {
+    var out = [];
+    if (!p || sealedPage(p) || p.kind === "filler") return out;
+    if (p.n === 0) return [data.meta.title + ".", data.meta.tagline];
+    if (p.kind === "outro") { var last = data.episodes[12]; return last && last.unlocked ? last.outro.map(say) : out; }
+    if (p.kind === "img") return ["Episode " + p.ep.no + ". " + say(p.ep.title), p.ep.tagline];
+    if (p.kind !== "text") return out;
+    p.blocks.forEach(function (b) {
+      if (b.t === "tail") {
+        var ep = p.ep; out.push(ep.reportTitle.toLowerCase() + ".");
+        Object.keys(ep.report).forEach(function (k) { out.push(k + ": " + say(ep.report[k]) + "."); });
+        var next = data.episodes[ep.no]; if (next) out.push("Next episode: " + dateLong(next) + ".");
+      } else if (b.t === "card" && /MESSAGE FROM SANTA|– SANTA/.test(b.x)) out.push("A text message from Santa: " + say(b.x.replace(/^MESSAGE FROM SANTA:\s*/, "").replace(/\s*–\s*SANTA$/, "")));
+      else if (b.t === "card" && /^MEETING DECLINED/.test(b.x)) out.push("Outlook: meeting declined. " + say(b.x.replace(/^MEETING DECLINED\.\s*/, "")));
+      else out.push(say(b.x));
+    });
+    return out;
+  }
+  function chunks(list) {
+    var res = [];
+    list.forEach(function (t) {
+      var parts = t.match(/[^.!?]+[.!?]*["')]*\s*/g) || [t], cur = "";
+      parts.forEach(function (s2) { if ((cur + s2).length > 200 && cur) { res.push(cur); cur = ""; } cur += s2; });
+      if (cur.trim()) res.push(cur);
+    });
+    return res.filter(function (c) { return /\w/.test(c); });
+  }
+  function setReading(on) { reading = on; var b = $("#listen"); b.classList.toggle("on", on); b.textContent = on ? "■ Stop" : "▶ Listen"; }
+  function stopReading() { readTok++; if (reading && TTS) TTS.cancel(); if (reading) setReading(false); }
+  function readNow() {
+    var tok = ++readTok; TTS.cancel();
+    var idxs = visiblePageIdx().filter(function (i) { return pages[i]; }), stop = false, list = [];
+    idxs.forEach(function (i) { if (sealedPage(pages[i])) stop = true; else list = list.concat(speech(pages[i])); });
+    var parts = chunks(list);
+    function after() {
+      if (tok !== readTok || !reading) return;
+      if (stop || pos >= maxPos()) { stopReading(); return; }
+      turning = true; goTo(pos + 1); turning = false;
+      setTimeout(function () { if (reading && tok === readTok) readNow(); }, 1300);
+    }
+    if (!parts.length) { after(); return; }
+    parts.forEach(function (c, j) {
+      var u = new SpeechSynthesisUtterance(c); u.rate = .95; u.lang = voice ? voice.lang : "en-GB"; if (voice) u.voice = voice;
+      if (j === parts.length - 1) u.onend = after;
+      u.onerror = function (ev) { if (tok === readTok && ev.error !== "interrupted" && ev.error !== "canceled") stopReading(); };
+      TTS.speak(u);
+    });
+  }
+  $("#listen").onclick = function () { if (reading) { stopReading(); return; } if (!TTS) return; setReading(true); readNow(); };
+  addEventListener("pagehide", function () { if (TTS) TTS.cancel(); });
 
   /* ---------- countdowns, resize, input ---------- */
   function tick() {
@@ -562,7 +666,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       if (keep && opened) want = currentEp(); buildNav(); render();
       if (!keep) {
         var was = false; try { was = sessionStorage.getItem("book-opened"); } catch (e) {}
-        if (was) { opened = true; $("#nav").hidden = false; $("#hint").hidden = false; var n = latest(); pos = n ? posForEp(n) : 1; render(); }
+        if (was) { opened = true; $("#nav").hidden = false; if (TTS) $("#listen").hidden = false; var n = latest(); pos = n ? posForEp(n) : 1; render(); }
       }
     }).catch(function () {
       $("#stage").innerHTML = '<div class="msg-full"><div>The elves have misplaced the book.<br><br><button class="open" style="font:inherit;color:inherit;border:1.5px solid;background:none;padding:.8em 1.4em;cursor:pointer" onclick="location.reload()">TRY AGAIN</button></div></div>';
@@ -577,16 +681,17 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   });
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { closeToc(); return; }
+    if (e.key === "Escape") { closeToc(); closeLb(); return; }
     if (!$("#toc").hidden) return;
-    if (!opened) { if (e.key === "Enter" || e.key === " ") openBook(); return; }
+    if (!opened) { if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") openBook(); return; }
     if (e.key === "ArrowRight") goTo(pos + 1); else if (e.key === "ArrowLeft") goTo(pos - 1);
   });
   var sx, sy, st;
   function swipeEnd(x, y) {
     if (sx == null) return;
     var dx = x - sx, dy = y - sy, dt = Date.now() - st; sx = null;
-    if (opened && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.4 && dt < 900) goTo(pos + (dx < 0 ? 1 : -1));
+    if (!opened) { if (dx < -40 && Math.abs(dx) > Math.abs(dy)) openBook(); return; }
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.4 && dt < 900) goTo(pos + (dx < 0 ? 1 : -1));
   }
   var bk = $("#book");
   bk.addEventListener("touchstart", function (e) { if (e.touches.length !== 1) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now(); }, { passive: true });
@@ -594,10 +699,13 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   bk.addEventListener("touchcancel", function () { sx = null; }, { passive: true });
   bk.addEventListener("pointerdown", function (e) { if (e.pointerType === "mouse") { sx = e.clientX; sy = e.clientY; st = Date.now(); } });
   bk.addEventListener("pointerup", function (e) { if (e.pointerType === "mouse") swipeEnd(e.clientX, e.clientY); });
-  $("#book").addEventListener("click", function (e) { if (e.target.closest("#openBtn") || (pos === 0 && e.target.closest(".cover"))) openBook(); });
+  /* open with a tap anywhere on the cover; judged by position, so it does not depend on what the browser hit-tests in 3D */
+  function onCover(x, y) { var c = $(".face.cover"); if (!c) return false; var r = c.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }
+  document.addEventListener("click", function (e) { if (!opened && data && onCover(e.clientX, e.clientY)) openBook(); });
+  document.addEventListener("touchend", function (e) { var t = e.changedTouches && e.changedTouches[0]; if (!opened && data && t && Math.abs(t.clientX - (sx == null ? t.clientX : sx)) < 12 && onCover(t.clientX, t.clientY)) openBook(); }, { passive: true });
   $("#next").onclick = function () { goTo(pos + 1); };
   $("#tocBtn").onclick = openToc; $("#tocX").onclick = closeToc; $("#tocBack").onclick = closeToc;
-  $("#homeBtn").onclick = function () { closeToc(); goTo(0, 60); };
+  $("#homeBtn").onclick = function () { closeToc(); nav(0, 120); };
   $("#prev").onclick = function () { goTo(pos - 1); };
 
   if (!REDUCED) snow();
