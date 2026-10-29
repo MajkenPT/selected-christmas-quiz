@@ -520,7 +520,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   }
   /* the browser remembers how far the reader has come, so the next visit can start at the next episode */
   function rememberSeen(n) {
-    if (/[?&]date=/.test(location.search)) return; /* a previewed day is not a real visit */
+    if (/[?&]date=/.test(location.search) || !data.episodes[n - 1].unlocked) return; /* a previewed day or a sealed chapter is not a visit */
     try { var s0 = parseInt(localStorage.getItem("book-seen"), 10) || 0; if (n > s0) localStorage.setItem("book-seen", String(n)); } catch (e) {}
   }
   function openToc() { $("#toc").hidden = false; var c = $("#toc-list .cur button") || $("#toc-list button"); if (c) c.focus({ preventScroll: true }); $("#toc-list").scrollTop = 0; }
@@ -735,7 +735,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
       if (!keep) {
         var q = parseInt(new URLSearchParams(location.search).get("ep") || (location.hash.match(/^#ep(\d+)/) || [])[1], 10), seen = 0;
         try { seen = parseInt(localStorage.getItem("book-seen"), 10) || 0; } catch (e) {}
-        var lat = latest(), target = q >= 1 && q <= 13 && data.episodes[q - 1].unlocked ? q : (seen && lat ? Math.min(lat, seen + 1) : 0);
+        var lat = latest(), target = q >= 1 && q <= 13 ? q : (seen && lat ? Math.min(lat, seen + 1) : 0); /* a link opens at its episode, sealed or not */
         if (target) { opened = true; $("#nav").hidden = false; want = target; }
       }
       render();
