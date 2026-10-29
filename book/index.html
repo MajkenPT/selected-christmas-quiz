@@ -514,6 +514,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     Array.prototype.forEach.call($("#dots").children, function (b, i) { b.classList.toggle("cur", i + 1 === cur); });
     $("#lbl").textContent = cur === 0 ? "Cover" : cur === 14 ? "The end" : "Ep " + cur + " / 13";
     $("#homeBtn").disabled = pos === 0; if (typeof showRate === "function" && data) showRate();
+    $("#readbar").hidden = !(opened && data && (window.speechSynthesis || hasAudio()) && cur >= 1 && cur <= 13);
     Array.prototype.forEach.call($("#toc-list").children, function (li, i) { li.classList.toggle("cur", i + 1 === cur); });
   }
   function openToc() { $("#toc").hidden = false; var c = $("#toc-list .cur button") || $("#toc-list button"); if (c) c.focus({ preventScroll: true }); $("#toc-list").scrollTop = 0; }
@@ -589,7 +590,6 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     burst(cx + 20, r.top + r.height / 2, ["✦", "❄", "✦", "✨"], 26);
     var target = latest(); target = target ? posForEp(target) : (mobile ? 1 : 1);
     goTo(target, target > 12 ? 90 : target > 3 ? 200 : 140);
-    try { sessionStorage.setItem("book-opened", "1"); } catch (e) {}
   }
 
   /* ---------- picture pop-out ---------- */
@@ -818,10 +818,6 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     fetch("/api/book" + location.search, { cache: "no-store" }).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (d) {
       data = d; offset = Date.parse(d.now) - Date.now();
       if (keep && opened) want = currentEp(); buildNav(); render();
-      if (!keep) {
-        var was = false; try { was = sessionStorage.getItem("book-opened"); } catch (e) {}
-        if (was) { opened = true; $("#nav").hidden = false; if (TTS || hasAudio()) $("#readbar").hidden = false; var n = latest(); pos = n ? posForEp(n) : 1; render(); }
-      }
     }).catch(function () {
       $("#stage").innerHTML = '<div class="msg-full"><div>The elves have misplaced the book.<br><br><button class="open" style="font:inherit;color:inherit;border:1.5px solid;background:none;padding:.8em 1.4em;cursor:pointer" onclick="location.reload()">TRY AGAIN</button></div></div>';
     });
@@ -855,8 +851,10 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   bk.addEventListener("pointerup", function (e) { if (e.pointerType === "mouse") swipeEnd(e.clientX, e.clientY); });
   /* open with a tap anywhere on the cover; judged by position, so it does not depend on what the browser hit-tests in 3D */
   function onCover(x, y) { var c = $(".face.cover"); if (!c) return false; var r = c.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }
-  document.addEventListener("click", function (e) { if (!opened && data && onCover(e.clientX, e.clientY)) openBook(); });
-  document.addEventListener("touchend", function (e) { var t = e.changedTouches && e.changedTouches[0]; if (!opened && data && t && Math.abs(t.clientX - (sx == null ? t.clientX : sx)) < 12 && onCover(t.clientX, t.clientY)) openBook(); }, { passive: true });
+  var lastTap = 0;
+  function coverTap(x, y) { if (!data || pos !== 0 || !onCover(x, y) || Date.now() - lastTap < 800) return; lastTap = Date.now(); if (!opened) openBook(); else goTo(1); }
+  document.addEventListener("click", function (e) { coverTap(e.clientX, e.clientY); });
+  document.addEventListener("touchend", function (e) { var t = e.changedTouches && e.changedTouches[0]; if (t && Math.abs(t.clientX - (sx == null ? t.clientX : sx)) < 12) coverTap(t.clientX, t.clientY); }, { passive: true });
   $("#next").onclick = function () { goTo(pos + 1); };
   $("#tocBtn").onclick = openToc; $("#tocX").onclick = closeToc; $("#tocBack").onclick = closeToc;
   $("#homeBtn").onclick = function () { closeToc(); nav(0, 120); };
