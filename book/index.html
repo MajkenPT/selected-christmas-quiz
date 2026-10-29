@@ -514,8 +514,14 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     Array.prototype.forEach.call($("#dots").children, function (b, i) { b.classList.toggle("cur", i + 1 === cur); });
     $("#lbl").textContent = cur === 0 ? "Cover" : cur === 14 ? "The end" : "Ep " + cur + " / 13";
     $("#homeBtn").disabled = pos === 0; if (typeof showRate === "function" && data) showRate();
-    $("#readbar").hidden = !(opened && data && (window.speechSynthesis || hasAudio()) && cur >= 1 && cur <= 13);
+    $("#readbar").hidden = !(opened && data && chapterAudio(cur));
+    if (opened && cur >= 1 && cur <= 13) rememberSeen(cur);
     Array.prototype.forEach.call($("#toc-list").children, function (li, i) { li.classList.toggle("cur", i + 1 === cur); });
+  }
+  /* the browser remembers how far the reader has come, so the next visit can start at the next episode */
+  function rememberSeen(n) {
+    if (/[?&]date=/.test(location.search)) return; /* a previewed day is not a real visit */
+    try { var s0 = parseInt(localStorage.getItem("book-seen"), 10) || 0; if (n > s0) localStorage.setItem("book-seen", String(n)); } catch (e) {}
   }
   function openToc() { $("#toc").hidden = false; var c = $("#toc-list .cur button") || $("#toc-list button"); if (c) c.focus({ preventScroll: true }); $("#toc-list").scrollTop = 0; }
   function closeToc() { $("#toc").hidden = true; }
@@ -585,7 +591,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   /* ---------- opening ---------- */
   function openBook() {
     if (opened) return; opened = true;
-    $("#nav").hidden = false; hintText(); if (TTS || hasAudio()) $("#readbar").hidden = false;
+    $("#nav").hidden = false; hintText(); 
     var r = $("#book").getBoundingClientRect(), cx = mobile ? r.left : r.left + r.width / 2;
     burst(cx + 20, r.top + r.height / 2, ["✦", "❄", "✦", "✨"], 26);
     var target = latest(); target = target ? posForEp(target) : (mobile ? 1 : 1);
@@ -600,66 +606,20 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     else if (e.target.closest && e.target.closest("#lb")) closeLb();
   });
 
-  /* ---------- read aloud (the browser's own voice), with the text marked as it is read ---------- */
-  var TTS = window.speechSynthesis && window.SpeechSynthesisUtterance ? window.speechSynthesis : null;
-  var reading = false, paused = false, turning = false, readTok = 0, voice = null, rate = 1.05, arate = 1, audio = null;
-  try { var sv = JSON.parse(localStorage.getItem("book-voice-2") || "{}"); if (sv.rate) rate = sv.rate; if (sv.arate) arate = sv.arate; } catch (e) {}
-  function pickVoice() {
-    if (!TTS) return;
-    var vs = TTS.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
-    voice = vs.filter(function (v) { return /Samantha|Daniel|Serena|Karen|Moira|Google UK English|Natural|Online/i.test(v.name); })[0] || vs.filter(function (v) { return /en[-_]GB/i.test(v.lang); })[0] || vs[0] || null;
-  }
-  if (TTS) { pickVoice(); TTS.onvoiceschanged = pickVoice; }
-  function audioMode() { return !!audio || !!chapterAudio(currentEp()); }
-  function showRate() { var r = audioMode() ? arate : rate; $("#vRate").value = r; $("#vRateV").textContent = "×" + r.toFixed(2); $("#voiceBtn").textContent = "Speed ×" + r.toFixed(2); }
+  /* ---------- recorded narration, with the text marked as it is read ---------- */
+  var reading = false, paused = false, turning = false, arate = 1, audio = null;
+  try { var sv = JSON.parse(localStorage.getItem("book-speed") || "{}"); if (sv.rate) arate = sv.rate; } catch (e) {}
+  function showRate() { $("#vRate").value = arate; $("#vRateV").textContent = "×" + arate.toFixed(2); $("#voiceBtn").textContent = "Speed ×" + arate.toFixed(2); }
   showRate();
   $("#voiceBtn").onclick = function (e) { e.stopPropagation(); $("#vp").hidden = !$("#vp").hidden; };
   $("#vp").addEventListener("click", function (e) { e.stopPropagation(); });
   document.addEventListener("click", function () { $("#vp").hidden = true; });
   $("#vRate").oninput = function () {
-    var v = parseFloat($("#vRate").value);
-    if (audioMode()) { arate = v; if (audio) audio.playbackRate = arate; } else rate = v;
-    showRate(); try { localStorage.setItem("book-voice-2", JSON.stringify({ rate: rate, arate: arate })); } catch (e) {}
+    arate = parseFloat($("#vRate").value); if (audio) audio.playbackRate = arate; showRate();
+    try { localStorage.setItem("book-speed", JSON.stringify({ rate: arate })); } catch (e) {}
   };
-  $("#vRate").onchange = function () { if (reading && !audio) readNow(); };
 
-  function say(t) { t = String(t); if (!/[a-z]/.test(t)) t = t.toLowerCase(); return t.replace(/\*/g, "").replace(/\s*\+\s*/g, " plus ").replace(/(\d)%/g, "$1 percent").replace(/\s+/g, " ").trim(); }
-  function sealedPage(p) { return p && p.ep && !p.ep.unlocked && p.kind !== "filler"; }
-  /* what to say for a page: items of text, each tied to a block of the page (key) so it can be marked */
-  function items(idx) {
-    var p = pages[idx], out = [];
-    function add(key, text) { out.push({ idx: idx, key: key, text: text }); }
-    if (!p || sealedPage(p) || p.kind === "filler") return out;
-    if (p.n === 0) { add(null, data.meta.title + "."); add(null, data.meta.tagline); return out; }
-    if (p.kind === "outro") { var last = data.episodes[12]; if (last && last.unlocked) last.outro.forEach(function (l) { add(null, say(l)); }); return out; }
-    if (p.kind === "img") { add("e", "Episode " + p.ep.no + "."); add("t", say(p.ep.title)); add("g", p.ep.tagline); return out; }
-    if (p.kind !== "text") return out;
-    p.blocks.forEach(function (b, j) {
-      var k = String(j);
-      if (b.t === "tail") {
-        var ep = p.ep; add(k, ep.reportTitle.toLowerCase() + ".");
-        Object.keys(ep.report).forEach(function (r) { add(k, r + ": " + say(ep.report[r]) + "."); });
-        var next = data.episodes[ep.no]; if (next) add(k, "Next episode: " + dateLong(next) + ".");
-      } else if (b.t === "card" && /MESSAGE FROM SANTA|– SANTA/.test(b.x)) add(k, "A text message from Santa: " + say(b.x.replace(/^MESSAGE FROM SANTA:\s*/, "").replace(/\s*–\s*SANTA$/, "")));
-      else if (b.t === "card" && /^MEETING DECLINED/.test(b.x)) add(k, "Outlook: meeting declined. " + say(b.x.replace(/^MEETING DECLINED\.\s*/, "")));
-      else add(k, say(b.x));
-    });
-    return out;
-  }
-  /* cut an item into pieces of whole sentences (long pieces make some browsers stop) and remember where each piece starts */
-  function pieces(item) {
-    var res = [], re = /[^.!?]+[.!?]*["')]*\s*/g, m, parts = [], cur = "", start = 0;
-    while ((m = re.exec(item.text))) parts.push({ s: m[0], i: m.index });
-    if (!parts.length) parts = [{ s: item.text, i: 0 }];
-    parts.forEach(function (pt) {
-      if (cur && (cur + pt.s).length > 200) { res.push({ text: cur, item: item, start: start }); cur = ""; }
-      if (!cur) start = pt.i; cur += pt.s;
-    });
-    if (cur.trim()) res.push({ text: cur, item: item, start: start });
-    return res.filter(function (c) { return /\w/.test(c.text); });
-  }
-
-  /* marking: the sentence gets a soft yellow, the word being said a stronger mark (where the browser reports words) */
+  /* marking: the sentence gets a soft yellow, the word being said a stronger mark  */
   var HL = !!(window.CSS && CSS.highlights && window.Highlight), hlSent, hlWord, hlEl = null;
   if (HL) { hlSent = new Highlight(); hlWord = new Highlight(); CSS.highlights.set("reading", hlSent); CSS.highlights.set("readword", hlWord); }
   function elFor(item) { return item.key == null ? null : document.querySelector('.face[data-p="' + item.idx + '"] [data-b="' + item.key + '"]'); }
@@ -674,47 +634,25 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     }
     return null;
   }
-  function markPiece(c) {
-    clearHl(); var el = elFor(c.item); if (!el) return;
-    if (HL && el.textContent === c.item.text) { var r = textRange(el, c.start, c.start + c.text.replace(/\s+$/, "").length); if (r) { hlSent.add(r); return; } }
-    el.classList.add("reading"); hlEl = el;
-  }
-  function markWord(c, ci) {
-    if (!HL) return; var el = elFor(c.item); if (!el || el.textContent !== c.item.text) return;
-    var re = /\S+/g; re.lastIndex = c.start + ci; var m = re.exec(c.item.text); if (!m) return;
-    var len = m[0].replace(/[.,!?;:"')]+$/, "").length || m[0].length, r = textRange(el, m.index, m.index + len);
-    hlWord.clear(); if (r) hlWord.add(r);
-  }
-
   function syncBtn() {
     var b = $("#listen"); b.classList.toggle("on", reading && !paused);
     b.textContent = !reading ? "▶ Listen" : paused ? "▶ Resume" : "❚❚ Pause"; $("#stopBtn").hidden = !reading;
   }
   function setReading(on) { reading = on; paused = false; syncBtn(); }
-  function pauseReading() { if (!reading || paused) return; paused = true; if (audio) audio.pause(); else if (TTS) TTS.pause(); syncBtn(); }
+  function pauseReading() { if (!reading || paused) return; paused = true; if (audio) audio.pause(); syncBtn(); }
   function resumeReading() {
     if (!reading || !paused) return; paused = false;
     if (audio) { var a = audio; a.play().then(function () { if (a === audio && a._frame) requestAnimationFrame(a._frame); }).catch(stopReading); }
-    else if (TTS) TTS.resume();
     syncBtn();
   }
   function stopReading() {
-    readTok++; if (reading && TTS) TTS.cancel();
     if (audio) { audio.pause(); audio.onended = audio.ontimeupdate = null; audio = null; $("#aprog").style.width = "0"; }
     if (reading) setReading(false); clearHl();
   }
-  /* ---- recorded narration: plays the mp3 and turns the pages along with it (page times are estimated from how much text each page holds) ---- */
+  /* ---- plays the mp3 and turns the pages along with it ---- */
   function chapterAudio(n) { var ep = data && data.episodes[n - 1]; return ep && ep.unlocked && ep.audio ? ep.audio : null; }
   function hasAudio() { return !!data && data.episodes.some(function (e) { return e.unlocked && e.audio; }); }
   function spreadFor(idx) { return mobile ? idx : Math.ceil(idx / 2); }
-  function audioPlan(n) {
-    var w = function (list) { return list.reduce(function (a, it) { return a + it.text.length + 16; }, 0); };
-    var pre = n === 1 ? w([{ text: data.meta.title + "." }, { text: data.meta.tagline }, { text: data.meta.blurb }]) : 0;
-    var idxs = []; pages.forEach(function (p, i) { if (p.n === n && (p.kind === "img" || p.kind === "text")) idxs.push(i); });
-    var ws = idxs.map(function (i) { return w(items(i)); }), total = pre + ws.reduce(function (a, b) { return a + b; }, 0), acc = pre, out = [];
-    idxs.forEach(function (i, k) { out.push({ idx: i, f: acc / total }); acc += ws[k]; });
-    return out;
-  }
   /* where on the pages each spoken part sits: {key, idx, t0, t1, w} (w = start time of each word) */
   function audioSegs(n, map) {
     var out = [], imgIdx = -1;
@@ -731,11 +669,12 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     var plan = null, segs = null, cur = null, raf = 0;
     a.addEventListener("loadedmetadata", function () {
       if (a !== audio) return;
-      if (ep.audioMap) {
+      if (!ep.audioMap) { stopReading(); return; }
+      {
         segs = audioSegs(n, ep.audioMap);
         plan = [{ idx: segs[0].idx, t: 0 }];
         var seen = {}; segs.forEach(function (g) { if (g.idx !== segs[0].idx && !seen[g.idx]) { seen[g.idx] = 1; plan.push({ idx: g.idx, t: g.t0 }); } });
-      } else plan = audioPlan(n).map(function (p) { return { idx: p.idx, t: p.f * a.duration }; });
+      }
       var vis = visiblePageIdx(), start = null;
       plan.forEach(function (p, k) { if (vis.indexOf(p.idx) !== -1 && start === null) start = k === 0 ? 0 : p.t; });
       a.currentTime = start || 0; a.play().then(function () { raf = requestAnimationFrame(frame); }).catch(function () { stopReading(); });
@@ -771,36 +710,11 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     a.onended = function () { if (a === audio) stopReading(); };
     a.onerror = function () { if (a === audio) stopReading(); };
   }
-  function readNow() {
-    var tok = ++readTok; TTS.cancel(); clearHl(); if (paused) { paused = false; syncBtn(); }
-    var idxs = visiblePageIdx().filter(function (i) { return pages[i]; }), stop = false, list = [];
-    idxs.forEach(function (i) { if (sealedPage(pages[i])) stop = true; else list = list.concat(items(i)); });
-    var parts = []; list.forEach(function (it) { parts = parts.concat(pieces(it)); });
-    function after() {
-      if (tok !== readTok || !reading) return;
-      clearHl();
-      if (stop || pos >= maxPos()) { stopReading(); return; }
-      turning = true; goTo(pos + 1); turning = false;
-      setTimeout(function () { if (reading && tok === readTok) readNow(); }, 1300);
-    }
-    if (!parts.length) { after(); return; }
-    parts.forEach(function (c, j) {
-      var u = new SpeechSynthesisUtterance(c.text); u.rate = rate; u.lang = voice ? voice.lang : "en-GB"; if (voice) u.voice = voice;
-      u.onstart = function () { if (tok === readTok) markPiece(c); };
-      u.onboundary = function (ev) { if (tok === readTok && ev.name === "word") markWord(c, ev.charIndex); };
-      if (j === parts.length - 1) u.onend = after;
-      u.onerror = function (ev) { if (tok === readTok && ev.error !== "interrupted" && ev.error !== "canceled") stopReading(); };
-      TTS.speak(u);
-    });
-  }
   $("#listen").onclick = function () {
     if (reading) { if (paused) resumeReading(); else pauseReading(); return; }
-    var n = currentEp();
-    if (chapterAudio(n)) { setReading(true); playAudio(n); return; }
-    if (!TTS) return; setReading(true); readNow();
+    var n = currentEp(); if (chapterAudio(n)) { setReading(true); playAudio(n); }
   };
   $("#stopBtn").onclick = stopReading;
-  addEventListener("pagehide", function () { if (TTS) TTS.cancel(); });
 
   /* ---------- countdowns, resize, input ---------- */
   function tick() {
@@ -817,7 +731,14 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   function load(keep) {
     fetch("/api/book" + location.search, { cache: "no-store" }).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (d) {
       data = d; offset = Date.parse(d.now) - Date.now();
-      if (keep && opened) want = currentEp(); buildNav(); render();
+      if (keep && opened) want = currentEp(); buildNav();
+      if (!keep) {
+        var q = parseInt(new URLSearchParams(location.search).get("ep") || (location.hash.match(/^#ep(\d+)/) || [])[1], 10), seen = 0;
+        try { seen = parseInt(localStorage.getItem("book-seen"), 10) || 0; } catch (e) {}
+        var lat = latest(), target = q >= 1 && q <= 13 && data.episodes[q - 1].unlocked ? q : (seen && lat ? Math.min(lat, seen + 1) : 0);
+        if (target) { opened = true; $("#nav").hidden = false; want = target; }
+      }
+      render();
     }).catch(function () {
       $("#stage").innerHTML = '<div class="msg-full"><div>The elves have misplaced the book.<br><br><button class="open" style="font:inherit;color:inherit;border:1.5px solid;background:none;padding:.8em 1.4em;cursor:pointer" onclick="location.reload()">TRY AGAIN</button></div></div>';
     });
