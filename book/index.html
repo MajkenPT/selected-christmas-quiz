@@ -14,7 +14,7 @@
   --ratio:1.4;
   --pw:min(calc((100vw - 130px) / 2),calc((100dvh - 170px) / var(--ratio)),540px);
   --ph:calc(var(--pw) * var(--ratio));
-  --fs:clamp(12.5px,calc(var(--pw) * .031),16.5px);
+  --fs:clamp(13px,calc(var(--pw) * .032),16.5px);
   --flip:1.15s;
 }
 @media (max-width:800px){:root{--ratio:1.55;--pw:min(calc(100vw - 28px),calc((100dvh - 150px) / var(--ratio)),540px)}}
@@ -68,7 +68,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 @keyframes pop{from{transform:rotate(-6deg) scale(.88);opacity:0}to{transform:rotate(-1.2deg) scale(1);opacity:1}}
 
 /* story */
-.scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:calc(var(--pw) * .075) calc(var(--pw) * .085) calc(var(--pw) * .13);scrollbar-width:thin;scrollbar-color:#cfc6af transparent}
+.scroll{position:absolute;inset:0;font-size:var(--fs);line-height:1.62;overflow-y:auto;overflow-x:hidden;padding:calc(var(--pw) * .075) calc(var(--pw) * .085) calc(var(--pw) * .13);scrollbar-width:thin;scrollbar-color:#cfc6af transparent}
 .story p{margin:0 0 .85em}
 .runhead{font-size:.72em;letter-spacing:.18em;color:var(--ink-muted);text-transform:uppercase;border-bottom:1.5px solid var(--forest);padding-bottom:.6em;margin-bottom:1.3em;display:flex;justify-content:space-between;gap:1em}
 .story p.say{margin-left:.9em;padding-left:.8em;border-left:2px solid var(--wine)}
@@ -144,12 +144,15 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 .hint{font-size:11.5px;letter-spacing:.1em;opacity:.6;text-align:center;padding:0 16px}
 .msg-full{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px;z-index:3}
 @media (prefers-reduced-motion:reduce){:root{--flip:.35s}.mw::after,.cover .sp,.cover .open{animation:none}}
+#measure{position:fixed;left:-9999px;top:0;width:var(--pw);height:var(--ph);visibility:hidden;pointer-events:none}
+#measure .face{box-shadow:none}
 </style>
 </head>
 <body>
 <div class="knit" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><defs><pattern id="kp" width="14" height="11" patternUnits="userSpaceOnUse"><g class="k k1"><path d="M3.4 -1 L7 9.6 L10.6 -1"/><path d="M3.4 -1 L7 9.6 L10.6 -1" transform="translate(0 11)"/></g><g class="k k2"><path d="M3.4 -1 L7 9.6 L10.6 -1" transform="translate(-.5 -.4)"/><path d="M3.4 -1 L7 9.6 L10.6 -1" transform="translate(-.5 10.6)"/></g></pattern></defs><rect width="100%" height="100%" fill="url(#kp)"/></svg></div>
 <canvas id="snow" aria-hidden="true"></canvas>
 <div id="fx" aria-hidden="true"></div>
+<div id="measure" aria-hidden="true"><div class="face"><div class="scroll story" id="m"></div></div></div>
 <main class="stage" id="stage">
   <div class="wrap"><div class="book" id="book"></div></div>
   <div class="nav" id="nav" hidden>
@@ -170,7 +173,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   var REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   var data, offset = 0, mq = matchMedia("(max-width: 800px)");
-  var mobile = mq.matches, pages = [], leaves = [], L = 0, pos = 0, timers = [], opened = false, settleT;
+  var want = null, lastPw = 0, mobile = mq.matches, pages = [], leaves = [], L = 0, pos = 0, timers = [], opened = false, settleT;
 
   /* ---------- small helpers ---------- */
   function dparts(ep) { var p = ep.date.split("-").map(Number); return { y: p[0], m: p[1] - 1, d: p[2], wd: new Date(Date.UTC(p[0], p[1] - 1, p[2], 12)).getUTCDay() }; }
@@ -251,28 +254,51 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     return '<div class="report"><h3>' + esc(ep.reportTitle) + '</h3>' + rows + '</div>';
   }
 
-  function textPage(ep, no) {
-    var rh = '<div class="runhead"><span>Episode ' + epNo(ep) + '</span><span>' + dateLabel(ep) + '</span></div>';
-    if (!ep.unlocked) return '<div class="pg sealed">' + SEAL + '<div class="eyebrow">Episode ' + epNo(ep) + ' · sealed</div><div class="when">Opens ' + dateLong(ep) + '<br>at 07:00</div>' +
-      '<div class="cd" data-unlock="' + ep.unlockAt + '"></div><div class="small">Santa says: no peeking. The elves have been warned.</div><div class="pn">' + no + '</div></div>';
-    var seen = {}, h = "";
-    ep.blocks.forEach(function (b) {
-      if (b.t === "p") h += "<p>" + inline(b.x, seen) + "</p>";
-      else if (b.t === "say") h += '<p class="say">' + inline(b.x, seen) + "</p>";
-      else if (b.t === "note") h += '<div class="note">' + inline(b.x, seen) + "</div>";
-      else if (b.t === "dear") h += '<div class="dear">' + esc(b.x) + "</div>";
-      else if (b.t === "end") h += '<div class="end">' + esc(b.x) + "</div>";
-      else if (b.t === "card") {
-        if (/MESSAGE FROM SANTA|– SANTA/.test(b.x)) h += '<div class="notif"><div class="ico">🎅</div><div><div class="who">Messages · Santa</div><div class="msg">' + esc(b.x.replace(/^MESSAGE FROM SANTA:\s*/, "").replace(/\s*–\s*SANTA$/, "")) + '</div></div></div>';
-        else if (/^MEETING DECLINED/.test(b.x)) h += '<div class="notif"><div class="ico">📅</div><div><div class="who">Outlook · Meeting declined</div><div class="msg">' + esc(b.x.replace(/^MEETING DECLINED\.\s*/, "")) + '</div></div></div>';
-        else h += '<div class="card">' + esc(b.x) + "</div>";
-      }
-    });
+  function blockHtml(b, ep, seen) {
+    if (b.t === "p") return "<p>" + inline(b.x, seen) + "</p>";
+    if (b.t === "say") return '<p class="say">' + inline(b.x, seen) + "</p>";
+    if (b.t === "note") return '<div class="note">' + inline(b.x, seen) + "</div>";
+    if (b.t === "dear") return '<div class="dear">' + esc(b.x) + "</div>";
+    if (b.t === "end") return '<div class="end">' + esc(b.x) + "</div>";
+    if (b.t === "card") {
+      if (/MESSAGE FROM SANTA|– SANTA/.test(b.x)) return '<div class="notif"><div class="ico">🎅</div><div><div class="who">Messages · Santa</div><div class="msg">' + esc(b.x.replace(/^MESSAGE FROM SANTA:\s*/, "").replace(/\s*–\s*SANTA$/, "")) + '</div></div></div>';
+      if (/^MEETING DECLINED/.test(b.x)) return '<div class="notif"><div class="ico">📅</div><div><div class="who">Outlook · Meeting declined</div><div class="msg">' + esc(b.x.replace(/^MEETING DECLINED\.\s*/, "")) + '</div></div></div>';
+      return '<div class="card">' + esc(b.x) + "</div>";
+    }
+    /* tail: the report, kept together with "to be continued" */
     var next = data.episodes[ep.no];
-    var tail = ep.no < 13 ? '<div class="tbc">TO BE CONTINUED…</div>' : "";
-    return '<div class="scroll story">' + rh + h + tail + reportHtml(ep) +
-      (next ? '<p class="tag" style="text-align:center;margin-top:1.4em">Next episode: ' + dateLong(next) + '</p>' : "") + '</div><div class="pn">' + no + '</div>';
+    return "<div>" + (ep.no < 13 ? '<div class="tbc">TO BE CONTINUED…</div>' : "") + reportHtml(ep) +
+      (next ? '<p class="tag" style="text-align:center;margin-top:1.4em">Next episode: ' + dateLong(next) + "</p>" : "") + "</div>";
   }
+  function runhead(ep, i, n) {
+    return '<div class="runhead"><span>Episode ' + epNo(ep) + " · " + dateLabel(ep) + "</span><span>" + (n > 1 ? (i + 1) + " / " + n : "") + "</span></div>";
+  }
+  /* split the chapter into pages by measuring blocks in a hidden page of the real size */
+  function paginate(ep) {
+    var m = $("#m"), blocks = ep.blocks.concat([{ t: "tail" }]), out = [], cur = [];
+    m.innerHTML = runhead(ep, 0, 1);
+    blocks.forEach(function (b) {
+      var holder = document.createElement("div"); holder.innerHTML = blockHtml(b, ep, {});
+      var node = holder.firstElementChild; m.appendChild(node);
+      if (cur.length && m.scrollHeight > m.clientHeight) {
+        out.push(cur); cur = []; m.innerHTML = runhead(ep, 0, 1); m.appendChild(node);
+      }
+      cur.push(b);
+    });
+    out.push(cur);
+    return out;
+  }
+  function textPageHtml(ep, blocks, i, n, no) {
+    var seen = {}, h = runhead(ep, i, n);
+    blocks.forEach(function (b) { h += blockHtml(b, ep, seen); });
+    return '<div class="scroll story">' + h + '</div><div class="pn">' + no + "</div>";
+  }
+  function sealedText(ep, no) {
+    return '<div class="pg sealed">' + SEAL + '<div class="eyebrow">Episode ' + epNo(ep) + ' · sealed</div><div class="when">Opens ' + dateLong(ep) + '<br>at 07:00</div>' +
+      '<div class="cd" data-unlock="' + ep.unlockAt + '"></div><div class="small">Santa says: no peeking. The elves have been warned.</div><div class="pn">' + no + "</div></div>";
+  }
+  var HATSVG = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:26%">' + HAT + "</svg>";
+  function fillerPage(no) { return '<div class="pg sealed">' + HATSVG + '<div class="small">✦ ✦ ✦</div><div class="pn">' + no + "</div></div>"; }
 
   function outroPage(no) {
     var last = data.episodes[12];
@@ -282,15 +308,19 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   }
 
   function buildPages() {
-    pages = [{ cls: "cover", html: coverPage() }];
+    pages = [{ n: 0, cls: "cover", html: coverPage() }];
     data.episodes.forEach(function (ep) {
-      pages.push({ ep: ep, kind: "img" }); pages.push({ ep: ep, kind: "text" });
+      pages.push({ n: ep.no, ep: ep, kind: "img" });
+      if (!ep.unlocked) pages.push({ n: ep.no, ep: ep, kind: "sealed" });
+      else paginate(ep).forEach(function (bl, i, all) { pages.push({ n: ep.no, ep: ep, kind: "text", blocks: bl, i: i, cnt: all.length }); });
+      /* in the two-page view a chapter must fill whole spreads, so a leftover right-hand page gets an ornament */
+      if (!mobile && (pages.length - 1) % 2 === 1) pages.push({ n: ep.no, ep: ep, kind: "filler" });
     });
-    pages.push({ kind: "outro" });
+    pages.push({ n: 14, kind: "outro" });
     pages.forEach(function (p, i) {
       if (p.html) return;
-      var no = i;
-      p.html = p.kind === "img" ? imgPage(p.ep, no) : p.kind === "text" ? textPage(p.ep, no) : outroPage(no);
+      p.html = p.kind === "img" ? imgPage(p.ep, i) : p.kind === "sealed" ? sealedText(p.ep, i) : p.kind === "filler" ? fillerPage(i) :
+        p.kind === "text" ? textPageHtml(p.ep, p.blocks, p.i, p.cnt, i) : outroPage(i);
     });
   }
 
@@ -299,6 +329,9 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     var book = $("#book"); book.innerHTML = ""; leaves = [];
     buildPages();
     L = mobile ? pages.length : Math.ceil(pages.length / 2);
+    if (want !== null) { pos = want === 0 ? 0 : want === 14 ? maxPos() : posForEp(want); want = null; }
+    pos = Math.min(pos, maxPos());
+    lastPw = $("#measure").getBoundingClientRect().width;
     for (var i = 0; i < L; i++) {
       var leaf = document.createElement("div"); leaf.className = "leaf" + (mobile ? " single" : "");
       var fp = mobile ? pages[i] : pages[2 * i], bp = mobile ? null : pages[2 * i + 1];
@@ -361,10 +394,13 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   /* spread/page -> episode number (0 = cover, 14 = last page) */
   function currentEp() {
     if (pos === 0) return 0;
-    var q = mobile ? pos : 2 * pos - 1;
-    return Math.min(14, Math.ceil(q / 2) === 0 ? 1 : Math.ceil(q / 2));
+    var idx = mobile ? pos : (pages[2 * pos] ? 2 * pos : 2 * pos - 1);
+    return pages[idx] ? pages[idx].n : 0;
   }
-  function posForEp(n) { return mobile ? 2 * n - 1 : n; }
+  function posForEp(n) {
+    for (var i = 0; i < pages.length; i++) if (pages[i].n === n && pages[i].kind === "img") return mobile ? i : (i + 1) / 2;
+    return 1;
+  }
   function latest() { var n = 0; data.episodes.forEach(function (e) { if (e.unlocked) n = e.no; }); return n; }
 
   function updateNav() {
@@ -433,7 +469,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
     var r = $("#book").getBoundingClientRect(), cx = mobile ? r.left : r.left + r.width / 2;
     burst(cx + 20, r.top + r.height / 2, ["✦", "❄", "✦", "✨"], 26);
     var target = latest(); target = target ? posForEp(target) : (mobile ? 1 : 1);
-    goTo(target, target > 3 ? 330 : 140);
+    goTo(target, target > 12 ? 90 : target > 3 ? 200 : 140);
     try { sessionStorage.setItem("book-opened", "1"); } catch (e) {}
   }
 
@@ -452,24 +488,22 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
   function load(keep) {
     fetch("/api/book" + location.search, { cache: "no-store" }).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (d) {
       data = d; offset = Date.parse(d.now) - Date.now();
-      var wasOpen = opened; buildNav(); render();
+      if (keep && opened) want = currentEp(); buildNav(); render();
       if (!keep) {
         var was = false; try { was = sessionStorage.getItem("book-opened"); } catch (e) {}
         if (was) { opened = true; $("#nav").hidden = false; $("#hint").hidden = false; var n = latest(); pos = n ? posForEp(n) : 1; render(); }
       }
-      void wasOpen;
     }).catch(function () {
       $("#stage").innerHTML = '<div class="msg-full"><div>The elves have misplaced the book.<br><br><button class="open" style="font:inherit;color:inherit;border:1.5px solid;background:none;padding:.8em 1.4em;cursor:pointer" onclick="location.reload()">TRY AGAIN</button></div></div>';
     });
   }
 
-  mq.addEventListener("change", function () {
-    var ep = currentEp();
-    mobile = mq.matches;
-    pos = pos === 0 ? 0 : ep === 14 ? L_for_mode() : posForEp(Math.max(1, ep));
-    render();
+  mq.addEventListener("change", function () { want = currentEp(); mobile = mq.matches; render(); });
+  var rsT;
+  addEventListener("resize", function () {
+    clearTimeout(rsT);
+    rsT = setTimeout(function () { if (data && Math.abs($("#measure").getBoundingClientRect().width - lastPw) > 2) { want = currentEp(); render(); } }, 300);
   });
-  function L_for_mode() { return mobile ? 27 : 14; }
 
   document.addEventListener("keydown", function (e) {
     if (!opened) { if (e.key === "Enter" || e.key === " ") openBook(); return; }
@@ -487,7 +521,7 @@ h2.t{margin:.35em 0 .25em;font-weight:400;font-size:1.55em;line-height:1.18;text
 
   if (!REDUCED) snow();
   setInterval(tick, 20000); setTimeout(tick, 600);
-  load(false);
+  (document.fonts && document.fonts.load ? document.fonts.load('16px "Suisse Intl Mono"').catch(function () {}) : Promise.resolve()).then(function () { load(false); });
 })();
 </script>
 </body>
